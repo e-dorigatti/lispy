@@ -1,0 +1,46 @@
+(defn inc (x) (+ x 1))
+(defn dec (x) (- x 1))
+
+(defn first (lst) (nth lst 0))
+(defn last (lst) (nth lst -1))
+
+(defn rest (lst)
+    (do
+        (defn aux (i)
+            (if (= i (len lst)) (list)
+                (let (first (if (= i 0) (list) (list (nth lst i)))
+                        rest (if (< i (len lst)) (aux (inc i)) (list)))
+                    (+ first rest))))
+        (aux 0)))
+
+(defn skip (count lst)
+    (do
+        (defn aux (l i)
+            (if (<= i 0) l (skip (dec i) (rest l))))
+        (aux lst count)))
+
+(defn filter (function lst)
+    (do
+        (defn aux (l)
+            (if (not l) (list)
+            (if (function (first l))
+                (list (first l) & (aux (rest l)))
+                (aux (rest l)))))
+        (aux lst)))
+
+(defn map (function lst)
+    (do
+        (defn aux (l)
+            (if (not l)
+                (list)
+                (+ (list (function (first l))) (aux (rest l)))))
+        (aux lst)))
+
+(defn curry (function & args1)
+    (defn _ ( & args2)
+        (function & (+ args1 args2))))
+
+(defn zip (& lists)
+    (do
+        (defn getith (i) (defn _ (lst) (nth lst i)))
+        (defn halp (i acc))))

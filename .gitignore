@@ -1,0 +1,5 @@
+__pycache__/
+.vscode/
+.cache/
+*.py[co]
+test.lispy
