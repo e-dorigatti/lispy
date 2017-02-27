@@ -9,17 +9,14 @@ pars: interpreting!
 ```
 (def readme
     (let (lines ((. readlines (open "README.md"))))
-        (map (defn _ (line) ((. strip line))) lines)))
+        (map (# (. strip %0)) lines)))
 
 (def headers
-    (filter (defn _ (line)
-            (and line (= (first line) "#")))
-        readme))
+    (filter (# and %0 (= (first %0) "#")) readme))
 
 (def header_titles
-    (map (defn _ (hdr)
-            (let (words ((. split hdr) " "))
-                (+ "\t- " ((. join " ") (rest words)))))
+    (map (# let (words ((. split %0) " "))
+            (+ "\t- " ((. join " ") (rest words))))
         headers))
 
 (print "Sections of the readme:\n" ((. join "\n") header_titles))
@@ -82,53 +79,65 @@ Things I would like to implement, sooner or later:
 ## Syntax
 This is what is currently supported, and how to do it.
 
-#### Function Definition
-(defn \<name\> (arg-1 ... arg-n [& vararg]) \<body\>)
+#### Conditionals
+`(if <condition> <iftrue> <iffalse>)`
 
-introduces a new function. The last argument can be a vararg.
+If condition evaluates to true then iftrue is evaluated and returned, otherwise
+iffalse is evaluated and returned.
+
+#### Function Definition
+
+`(defn <name> (arg-1 ... arg-n [& vararg]) <body>)`
+
+Introduces a new function. The last argument can be a vararg.
+
+#### Anonymous Function Definityion
+`(# <expr-1> ... <expr-n>)`
+
+Introduces a new function with no name (unless you give it one!), which thus can
+only be called; arguments can be accessed via `%i`, where `i` is the i-th
+argument (e.g. `%1` is the *second* argument). It is equivalent to
+`(defn _ (%0 ... %m) (<expr-1> ... <expr-n>))`, note the parentheses surrounding
+the wrapped expressions.
 
 #### Function Invokation
-(\<function\> \<arg-1\> ... \<arg-n\> [& \<vararg\>])
+`(<function> <arg-1> ... <arg-n> [& <vararg>])`
 
 Evaluates to the value returned by the function called with the given parameters.
-The last argument can be a vararg.
+The last argument can be a vararg. `<function>` can be a name or an expression
+that evaluates to a function (e.g. an anonymous function).
 
-#### Let blocks
-(let (name-1 \<expr-1\> ... name-n \<expr-n\>) \<expression\>)
+#### Let Expression
+`(let (name-1 <expr-1> ... name-n <expr-n>) <expr>)`
 
-Introduces new definitions in the context and evaluates the expression. The
-definitions are discarded afterwards (i.e. outside this block).
+Introduces new definitions in the context and evaluates `expr`, whose value is
+the value of the whole let expression. The definitions are discarded afterwards
+(i.e. outside this block).
 
 #### Name Definition
-(def name-1 \<expr-1\> ... name-n \<expr-n\>)
+`(def name-1 <expr-1> ... name-n <expr-n>)`
 
 Introduces new definitions in the context. The value of the expression is the
 value of `expr-n`.
 
 #### Do blocks
-(do expr-1 ... expr-n)
+`(do expr-1 ... expr-n)`
 
 Evaluates all expressions in order, and returns the value of the last one. If an
 expression has side effects, they will be visible afterwards (e.g. functions
 defined in a do will be visible outside it).
 
-#### Conditionals
-(if \<condition\> \<iftrue\> \<iffalse\>)
-
-If condition evaluates to true then iftrue is evaluated and returned, otherwise
-iffalse is evaluated and returned.
-
 #### Python Imports
-(pyimport mod-1 ... mod-n)
+`(pyimport mod-1 ... mod-n)`
 
 Imports the given python modules.
 
 #### Property Invokation
-(. object property)
+`(. object property)`
 
 Returns the property of the given object.
 
 #### Comments
-(comment <text>)
+`(comment <text>)`
 
 Ignores the content.

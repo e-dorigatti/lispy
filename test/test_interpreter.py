@@ -113,3 +113,8 @@ def test_or():
     eval_expr('(do (def calls (list)) (defn canary (x) (do ((. append calls) x) x)))', inpr)
     assert eval_expr('(or (canary 0) (canary 1) (canary 2))', inpr)
     assert inpr.ctx['calls'] == [0, 1]
+
+
+def test_anonymous_functions():
+    inpr = IterativeInterpreter()
+    assert eval_expr('((# * %0 2) 2)', inpr) == 4
