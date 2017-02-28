@@ -3,17 +3,16 @@ from lispy.utils import eval_expr, parse_expr
 from lispy.context import ExecutionContext
 import pytest
 from lispy.tokenizer import Tokenizer
-from lispy import excs
 
 
 
 def test_balanced_parentheses():
     parse_expr('(()()((())())())')
 
-    with pytest.raises(excs.SyntaxErrorException):
+    with pytest.raises(SyntaxError):
         parse_expr('(((())')
 
-    with pytest.raises(excs.SyntaxErrorException):
+    with pytest.raises(SyntaxError):
         parse_expr('(())))')
 
 
@@ -92,7 +91,7 @@ def test_def():
 
 def test_str_names():
     inpr = IterativeInterpreter()
-    with pytest.raises(excs.NameNotFoundException):
+    with pytest.raises(NameError):
         eval_expr('(+ x y)', inpr)
 
 

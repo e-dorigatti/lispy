@@ -1,4 +1,3 @@
-from lispy.excs import NameNotFoundException
 import builtins
 from lispy.globals import GLOBALS
 
@@ -18,7 +17,7 @@ class ExecutionContext(object):
         elif item in builtins.__dict__:
             return builtins.__dict__[item]
         else:
-            raise NameNotFoundException(item)
+            raise NameError(item)
 
     def __setitem__(self, key, value):
         self.bindings[key] = value
@@ -26,7 +25,7 @@ class ExecutionContext(object):
     def __contains__(self, item):
         try:
             _ = self[item]
-        except (NameNotFoundException, TypeError):
+        except (NameError, TypeError):
             return False
         else:
             return True
@@ -34,7 +33,7 @@ class ExecutionContext(object):
     def get(self, key, default=None):
         try:
             return self[key]
-        except NameNotFoundException:
+        except NameError:
             return default
 
     def __str__(self):

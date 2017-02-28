@@ -7,7 +7,6 @@ from prompt_toolkit.validation import Validator, ValidationError
 from lispy.expression import ExpressionTree
 from lispy.context import ExecutionContext
 from lispy.interpreter import IterativeInterpreter
-from lispy.excs import SyntaxErrorException
 from lispy.utils import eval_expr
 
 
@@ -17,7 +16,7 @@ class ExpressionValidator(Validator):
         try:
             tokens = Tokenizer().tokenize(text)
             _ = ExpressionTree.from_tokens(tokens)
-        except SyntaxErrorException as exc:
+        except SyntaxError as exc:
             raise ValidationError(message=str(exc))
 
 
@@ -50,6 +49,8 @@ def repl(inpr, **kwargs):
                 else:
                     result = expr
         except:
+            inpr.print_stacktrace()
+            print()
             traceback.print_exc()
         else:
             print(result)

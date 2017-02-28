@@ -3,7 +3,6 @@ import re
 import inspect
 import types
 
-from lispy.excs import SyntaxErrorException, NameNotFoundException
 from lispy.context import ExecutionContext
 from lispy.expression import ExpressionTree
 from lispy.context import ExecutionContext
@@ -21,7 +20,7 @@ class Function:
         try:
             pos = self.parameters.index('&')
             if pos != len(self.parameters) - 2:
-                raise SyntaxErrorException('varargs must be in last position')
+                raise SyntaxError('varargs must be in last position')
             self.has_varargs = True
         except ValueError:
             self.has_varargs = False
@@ -90,9 +89,15 @@ class IterativeInterpreter:
 
         while self.operation_stack:
             op = self.operation_stack[-1]
+
             if op is None:
                 self.operation_stack.pop()
                 continue
+
+            # used for exception reporting
+            # when an exception happens inside a generator its gi_frame is set to None
+            # which is a pity, because it contains the exact spot that caused the exception
+            self.last_frame = op.gi_frame
 
             val = self.result_stack[-1]
             try:
@@ -109,6 +114,24 @@ class IterativeInterpreter:
                     self.result_stack.append(res)
 
         return val
+
+    def print_stacktrace(self):
+        print('Call Stack (most recent last):')
+        for op in self.operation_stack:
+            if op.gi_code.co_name.startswith('handle_'):
+                print(' ', op.gi_frame.f_locals['expr'].print_short())
+            elif op.gi_code.co_name == '__call__':
+                func = op.gi_frame.f_locals['self']
+                formal_pars = func.parameters
+                actual_pars = map(op.gi_frame.f_locals['ctx'].get, formal_pars)
+
+                print('  (%s %s)' % (func.name, ' '.join([
+                    '%s=%s' % (
+                        formal, str(actual) if len(str(actual)) < 25 else str(actual)[:25] + ' ... '
+                    ) for formal, actual in zip(formal_pars, actual_pars)
+                ])))
+
+        print('Exception happened here:', self.last_frame.f_locals['expr'])
 
     def eval(self, expr, ctx):
         if isinstance(expr, ExpressionTree):
@@ -127,7 +150,7 @@ class IterativeInterpreter:
                     return handler(ctx, expr, *args)
                 except TypeError:
                     expected = inspect.getargspec(handler).args[3:]
-                    raise SyntaxErrorException('expected syntax: (%s %s)' % (
+                    raise SyntaxError('expected syntax: (%s %s)' % (
                         name, ' '.join('<%s>' % arg for arg in expected)
                     ))
         elif isinstance(expr, Token):
@@ -147,8 +170,7 @@ class IterativeInterpreter:
 
     def ensure_identifier(self, token):
         if token.type != Token.TOKEN_IDENTIFIER:
-            raise SyntaxErrorException('"%s" is not a valid identifier'
-                                       '' % token.value)
+            raise SyntaxError('"%s" is not a valid identifier' % token.value)
         else:
             return token.value
 
@@ -164,16 +186,12 @@ class IterativeInterpreter:
             if args[-2] == '&':
                 args = args[:-2] + list(args[-1])
             else:
-                raise SyntaxErrorException('cannot have parameters after varargs')
+                raise SyntaxError('cannot have parameters after varargs')
 
         if hasattr(fun, '__call__'):
-            try:
-                yield fun(*args), ctx
-            except:
-                print('Error while calling %s with args %s' % (fun, ', '.join(map(str, args))))
-                raise
+            yield fun(*args), ctx
         else:
-            raise NameNotFoundException(fun)
+            raise NameError(fun)
 
     def handle_if(self, ctx, expr, cond, iftrue, iffalse):
         cval = yield cond, ctx

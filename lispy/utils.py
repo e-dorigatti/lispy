@@ -13,7 +13,11 @@ def eval_expr(program, inpr=None):
 
     result = None
     for expression in program:
-        result = inpr.evaluate(expression)
+        try:
+            result = inpr.evaluate(expression)
+        except:
+            inpr.print_stacktrace()
+            raise
     return result
 
 

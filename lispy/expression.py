@@ -1,5 +1,4 @@
 from lispy.tokenizer import Token, Tokenizer
-from lispy.excs import SyntaxErrorException
 
 
 class ExpressionTree:
@@ -30,8 +29,8 @@ class ExpressionTree:
         check = CheckBalancedParentheses()
         exprs = check.parse(iter(token_stream))
         if check.open_pars != check.closed_pars:
-            raise SyntaxErrorException('unbalanced parentheses',
-                                       open=check.open_pars, closed=check.closed_pars)
+            raise SyntaxError('unbalanced parentheses (open: %s closed: %s)'
+                              '' % (check.open_pars, check.closed_pars))
         else:
             return exprs
 
@@ -45,6 +44,18 @@ class ExpressionTree:
                 text.append(ind * (indent + 1) + child.__str__())
         text.append(ind * indent + ')')
         return '\n'.join(text)
+
+    def print_short(self):
+        parts = []
+        for child in self.children:
+            if isinstance(child, ExpressionTree):
+                parts.append('(' + ' '.join(
+                    '(...)' if isinstance(c, ExpressionTree) else str(c)
+                    for c in child.children
+                ) + ')')
+            else:
+                parts.append(str(child))
+        return '(%s)' % ' '.join(parts)
 
     def __str__(self):
         return '(' + ' '.join(child.__str__() for child in self.children) + ')'

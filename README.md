@@ -21,7 +21,7 @@ pars: interpreting!
 
 (print "Sections of the readme:\n" ((. join "\n") header_titles))
 
-(comment -  almost forgot...)
+(comment - almost forgot...)
 (pyimport this antigravity)
 ```
 
