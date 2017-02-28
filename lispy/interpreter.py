@@ -54,9 +54,11 @@ class AnonymousFunction:
         self.ctx = ctx
 
     def __call__(self, *args):
-        ctx = ExecutionContext(self.ctx)
+        bindings = {}
         for i, x in enumerate(args):
-            ctx['%' + str(i)] = x
+            bindings['%' + str(i)] = x
+
+        ctx = ExecutionContext(self.ctx, **bindings)
         yield self.body, ctx
 
     def __eq__(self, other):
@@ -123,16 +125,14 @@ class IterativeInterpreter:
                 print(' ', op.gi_frame.f_locals['expr'].print_short())
             elif op.gi_code.co_name == '__call__':
                 func = op.gi_frame.f_locals['self']
-                formal_pars = func.parameters
-                actual_pars = map(op.gi_frame.f_locals['ctx'].get, formal_pars)
 
-                print('  (%s %s)' % (func.name, ' '.join([
+                print('  (%s %s)' % (getattr(func, 'name', '<anonymous>'), ' '.join([
                     '%s=%s' % (
                         formal, str(actual) if len(str(actual)) < 25 else str(actual)[:25] + ' ... '
-                    ) for formal, actual in zip(formal_pars, actual_pars)
+                    ) for formal, actual in op.gi_frame.f_locals['bindings'].items()
                 ])))
 
-        if self.last_frame:
+        if self.last_frame and 'expr' in self.last_frame.f_locals:
             print('Exception happened here:', self.last_frame.f_locals['expr'])
 
     def eval(self, expr, ctx):
@@ -150,11 +150,11 @@ class IterativeInterpreter:
             else:
                 try:
                     return handler(ctx, expr, *args)
-                except TypeError:
+                except TypeError as exc:
                     expected = inspect.getargspec(handler).args[3:]
                     raise SyntaxError('expected syntax: (%s %s)' % (
                         name, ' '.join('<%s>' % arg for arg in expected)
-                    ))
+                    )) from exc
         elif isinstance(expr, Token):
             if expr.type == Token.TOKEN_IDENTIFIER:
                 members = expr.value.split('.')

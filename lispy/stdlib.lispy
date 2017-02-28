@@ -39,8 +39,3 @@
 (defn curry (function & args1)
     (defn _ ( & args2)
         (function & (+ args1 args2))))
-
-(defn zip (& lists)
-    (do
-        (defn getith (i) (defn _ (lst) (nth lst i)))
-        (defn halp (i acc))))

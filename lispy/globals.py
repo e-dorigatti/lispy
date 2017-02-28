@@ -50,6 +50,11 @@ def equality(*args):
     return True
 
 
+@glob('!=')
+def not_equality(*args):
+    return not equality(*args)
+
+
 @glob('%')
 def mod(a, b):
     return a % b
@@ -106,7 +111,7 @@ def nth(lst, i):
 
 
 @glob('slice')
-def slice(lst, start, end, step=1):
+def slice_(lst, start, end, step=1):
     return lst[start:end:step]
 
 
