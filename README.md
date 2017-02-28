@@ -25,12 +25,82 @@ pars: interpreting!
 (pyimport this antigravity)
 ```
 
+
+## Main Feature
+
+### REPL
+Based on [python-prompt-toolkit](https://github.com/jonathanslenders/python-prompt-toolkit);
+it still needs some love, but has the basics. Use `ctrl+enter` to evaluate an
+input, as `enter` inserts a new line:
+
+```
+$ python repl.py -S
+>>> (+ 1 1)
+2
+```
+
+### Python interoperability
+Thanks to `pyimport` and `pyimport_from`, it is possible to import python
+objects and use them:
+
+```
+>>> (pyimport_from sklearn.svm SVC)
+... (pyimport_from sklearn datasets)
+... (pyimport_from sklearn.model_selection train_test_split)
+...
+... (let (iris ((. load_iris datasets))
+...         X (. data iris) y (. target iris)
+...         clf (SVC))
+...     (do
+...         ((. fit clf) X y)
+...         (print "Training accuracy: " ((. score clf) X y))))
+Training accuracy:  0.986666666667
+None
+```
+
+### Stack Traces
+When exceptions happen, the stacktrace of the interpreted code is printed, together
+with a python stacktrace of the interpreter (not shown here)
+
+```
+>>> (defn stupid_divide (x)
+...     (if (= x 0)
+...         (/ 100 x)
+...         (let (y (stupid_divide (dec x)))
+...             (/ x y))))
+... (stupid_divide 3)
+Call Stack (most recent last):
+  (stupid_divide x=3)
+  (if (= x 0) (/ 100 x) (let (...) (...)))
+  (let (y (...)) (/ x y))
+  (stupid_divide x=2)
+  (if (= x 0) (/ 100 x) (let (...) (...)))
+  (let (y (...)) (/ x y))
+  (stupid_divide x=1)
+  (if (= x 0) (/ 100 x) (let (...) (...)))
+  (let (y (...)) (/ x y))
+  (stupid_divide x=0)
+  (if (= x 0) (/ 100 x) (let (...) (...)))
+Exception happened here: (/ 100 x)
+```
+
+### Standard library
+It's still tiny, but it's there (`lispy/stdlib.lispy`)! I tried to implement as few
+utilities as possible with python (`lispy/globals.py`), and leave the rest as
+testing playground for the interpreter. Beware: I tried to write it in functional
+style, but I'm not a good functional programmer, and I focused on "clarity"
+(hopefully) rather than efficiency, so... Yea :)
+
+
 ## Structure
 The juicy part is in `interpreter.py`. There are two implementations: a recursive
 version and an iterative version. The recursive version is quite natural to
 write and understand, given the recursive structure of LISP code; on the other hand,
 it takes very little to kill the interpreter with a `StackOverflowException` (around 
-70/80 recursive calls). To "solve" this, there is an iterative interpreter, which
+70/80 recursive calls). For this reason, it is not maintained anymore, but preserved
+as an illustrative example.
+
+To "solve" the recursion limit issue, there is an iterative interpreter, which
 basically maintains a stack of coroutines and moves parameters and return values
 around (it's recursion disguised!). It's pretty fun, if you ask me: when you are
 evaluating an expression, and need to evaluate  a sub-expression (e.g. when
@@ -128,9 +198,13 @@ expression has side effects, they will be visible afterwards (e.g. functions
 defined in a do will be visible outside it).
 
 #### Python Imports
-`(pyimport mod-1 ... mod-n)`
+ - `(pyimport mod-1 ... mod-n)`
 
-Imports the given python modules.
+   Imports the given python modules.
+
+ - `(pyimport_from mod name)`
+
+   Equivalent to `from mod import name`, note that `mod` can contain dots.
 
 #### Property Invokation
 `(. object property)`
