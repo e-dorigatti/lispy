@@ -4,6 +4,7 @@ from lispy.tokenizer import Tokenizer
 from prompt_toolkit import prompt
 from prompt_toolkit.token import Token
 from prompt_toolkit.validation import Validator, ValidationError
+from prompt_toolkit.history import InMemoryHistory
 from lispy.expression import ExpressionTree
 from lispy.context import ExecutionContext
 from lispy.interpreter import IterativeInterpreter
@@ -25,10 +26,11 @@ def get_continuation_tokens(cli, width):
 
 
 def repl(inpr, **kwargs):
-    ctx = ExecutionContext(None)
+    hist = InMemoryHistory()
+
     while True:
         try:
-            text = prompt(u'>>> ', multiline=True,
+            text = prompt(u'>>> ', multiline=True, history=hist,
                           validator=ExpressionValidator(),
                           get_continuation_tokens=get_continuation_tokens)
         except EOFError:
@@ -45,7 +47,7 @@ def repl(inpr, **kwargs):
         try:
             for expr in expressions:
                 if isinstance(expr, ExpressionTree):
-                    result = inpr.evaluate(expr, ctx)
+                    result = inpr.evaluate(expr)
                 else:
                     result = expr
         except:
