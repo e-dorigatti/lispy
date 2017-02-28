@@ -50,7 +50,6 @@ def repl(inpr, **kwargs):
                     result = expr
         except:
             inpr.print_stacktrace()
-            print()
             traceback.print_exc()
         else:
             print(result)

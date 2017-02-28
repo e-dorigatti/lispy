@@ -75,6 +75,14 @@ def test_import():
     assert eval_expr('(json.loads "[1, 2, 3]")', inpr) == [1, 2, 3]
 
 
+def test_import_from():
+    inpr = IterativeInterpreter()
+    eval_expr('(pyimport_from json.decoder JSONArray)', inpr)
+
+    from json.decoder import JSONArray
+    assert inpr.ctx.get('JSONArray') == JSONArray
+
+
 def test_member():
     ctx = ExecutionContext(None)
     ctx['s'] = '  abc  '

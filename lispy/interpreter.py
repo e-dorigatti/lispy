@@ -68,7 +68,7 @@ class AnonymousFunction:
 
 class IterativeInterpreter:
     def __init__(self, ctx=None, with_stdlib=False):
-        self.expression_stack = []
+        self.last_frame = None
         self.operation_stack = []
         self.result_stack = []
 
@@ -113,6 +113,7 @@ class IterativeInterpreter:
                 else:
                     self.result_stack.append(res)
 
+        self.last_frame = None
         return val
 
     def print_stacktrace(self):
@@ -131,7 +132,8 @@ class IterativeInterpreter:
                     ) for formal, actual in zip(formal_pars, actual_pars)
                 ])))
 
-        print('Exception happened here:', self.last_frame.f_locals['expr'])
+        if self.last_frame:
+            print('Exception happened here:', self.last_frame.f_locals['expr'])
 
     def eval(self, expr, ctx):
         if isinstance(expr, ExpressionTree):
@@ -227,6 +229,17 @@ class IterativeInterpreter:
     def handle_pyimport(self, ctx, expr, *modules):
         for mod in map(self.ensure_identifier, modules):
             ctx[mod] = importlib.import_module(mod)
+
+    def handle_pyimport_from(self, ctx, expr, module, name):
+        module = self.ensure_identifier(module)
+        name = self.ensure_identifier(name)
+
+        try:
+            mod = importlib.import_module(module + '.' + name)
+            ctx[name] = mod
+        except ModuleNotFoundError:
+            mod = importlib.import_module(module)
+            ctx[name] = getattr(mod, name)
 
     def handle_dot(self, ctx, expr, member, obj):
         obj = yield obj, ctx
