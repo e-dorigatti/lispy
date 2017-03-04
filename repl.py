@@ -28,6 +28,7 @@ def get_continuation_tokens(cli, width):
 
 
 def repl(inpr, **kwargs):
+    print('LISPY ver. 0.1')
     hist = InMemoryHistory()
 
     while True:
@@ -39,7 +40,7 @@ def repl(inpr, **kwargs):
             print('Quit')
             break
         except KeyboardInterrupt:
-            print('Interrupted')
+            print('Interrupted (CTRL+D to exit)')
             continue
 
         tokens = Tokenizer().tokenize(text)
@@ -62,9 +63,9 @@ def repl(inpr, **kwargs):
 @click.command()
 @click.argument('input-file', type=click.File('r'), nargs=-1)
 @click.option('-e', '--expression')
-@click.option('--with-stdlib', '-S', is_flag=True)
-def main(input_file, expression, with_stdlib, **kwargs):
-    inpr = IterativeInterpreter(with_stdlib=with_stdlib)
+@click.option('--without-stdlib', '-S', is_flag=True)
+def main(input_file, expression, without_stdlib, **kwargs):
+    inpr = IterativeInterpreter(with_stdlib=not without_stdlib)
 
     if input_file:
         for f in input_file:
