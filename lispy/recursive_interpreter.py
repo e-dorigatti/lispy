@@ -1,5 +1,50 @@
+import inspect
 
-class RecursiveInterpreter(BaseInterpreter):
+import importlib
+
+
+class Function:
+    def __init__(self, name, parameters, body, ctx):
+        self.name = name
+        self.parameters = parameters
+        self.body = body
+        self.ctx = ctx
+
+        try:
+            pos = self.parameters.index('&')
+            if pos != len(self.parameters) - 2:
+                raise SyntaxError('varargs must be in last position')
+            self.has_varargs = True
+        except ValueError:
+            self.has_varargs = False
+
+    def __call__(self, *args):
+        if self.has_varargs:
+            # pack arguments in varargs
+            n = len(self.parameters) - 2
+            bindings = dict(zip(self.parameters[:n], args[:n]))
+            bindings[self.parameters[-1]] = list(args[n:])
+        else:
+            bindings = dict(zip(self.parameters, args))
+
+        ctx = ExecutionContext(self.ctx, **bindings)
+        return self.evaluate(ctx)
+
+    def __eq__(self, other):
+        if not isinstance(other, Function):
+            return False
+        return (self.name == other.name and
+                self.parameters == other.parameters and
+                self.body == other.body)
+
+    def __str__(self):
+        return '<function "%s">' % self.name
+    
+    def evaluate(self, ctx):
+        raise NotImplemented
+
+
+class RecursiveInterpreter:
     def evaluate(self, expr, ctx):
         name, args = expr.children[0], expr.children[1:]
         try:
@@ -12,7 +57,7 @@ class RecursiveInterpreter(BaseInterpreter):
                 return handler(expr, ctx, *args)
             except TypeError:
                 expected = inspect.getargspec(handler).args[3:]
-                raise SyntaxErrorException('expected syntax: (%s %s)' % (
+                raise SyntaxError('expected syntax: (%s %s)' % (
                     name, ' '.join('<%s>' % arg for arg in expected)
                 ))
 

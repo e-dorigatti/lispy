@@ -3,3 +3,4 @@ __pycache__/
 .cache/
 *.py[co]
 test.lispy
+.coverage
