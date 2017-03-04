@@ -52,6 +52,8 @@ def test_do():
     assert eval_expr('(do (defn inc (x) (+ x 1)) (inc 1))', inpr) == 2
     assert 'inc' in inpr.ctx
 
+    assert eval_expr('(do 3 & (list (+ 1 1) (- 1 1)))', inpr) == 0
+
 
 def test_recursion():
     inpr = IterativeInterpreter()
@@ -64,6 +66,7 @@ def test_recursion():
 def test_varargs():
     inpr = IterativeInterpreter()
     assert eval_expr('(defn sum (& args) (+ &args)) (sum 1 2 3 4)', inpr) == 10
+    assert eval_expr('(defn f (x y z) (+ x y z)) (f 1 & (list 2 3))', inpr) == 6
 
 
 def test_import():
@@ -110,16 +113,20 @@ def test_call():
 
 def test_and():
     inpr = IterativeInterpreter()
-    eval_expr('(do (def calls (list)) (defn canary (x) (do ((. append calls) x) x)))', inpr)
+    eval_expr('(def calls (list)) (defn canary (x) (do ((. append calls) x) x))', inpr)
     assert not eval_expr('(and (canary 0) (canary 1) (canary 2))', inpr)
     assert inpr.ctx['calls'] == [0]
+
+    assert not eval_expr('(and 1 & (list 2 0 3))', inpr)
 
 
 def test_or():
     inpr = IterativeInterpreter()
-    eval_expr('(do (def calls (list)) (defn canary (x) (do ((. append calls) x) x)))', inpr)
+    eval_expr('(def calls (list)) (defn canary (x) (do ((. append calls) x) x))', inpr)
     assert eval_expr('(or (canary 0) (canary 1) (canary 2))', inpr)
     assert inpr.ctx['calls'] == [0, 1]
+
+    assert eval_expr('(or 0 & (list 0 2 3))', inpr)
 
 
 def test_anonymous_functions():

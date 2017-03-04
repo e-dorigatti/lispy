@@ -78,6 +78,26 @@ class IterativeInterpreter:
         if with_stdlib:
             load_stdlib(self)
 
+    def print_stacktrace(self):
+        print('Call Stack (most recent last):')
+        for op in self.operation_stack:
+            if op.gi_code.co_name.startswith('handle_'):
+                if op.gi_frame:
+                    print(' ', op.gi_frame.f_locals['expr'].print_short())
+                else:
+                    print('  <unavailable>')
+            elif op.gi_code.co_name == '__call__':
+                func = op.gi_frame.f_locals['self']
+
+                print('  (%s %s)' % (getattr(func, 'name', '<anonymous>'), ' '.join([
+                    '%s=%s' % (
+                        formal, str(actual) if len(str(actual)) < 25 else str(actual)[:25] + ' ... '
+                    ) for formal, actual in op.gi_frame.f_locals['bindings'].items()
+                ])))
+
+        if self.last_frame and 'expr' in self.last_frame.f_locals:
+            print('Exception happened here:', self.last_frame.f_locals['expr'])
+
     def evaluate(self, expr, ctx=None):
         ctx = ctx or self.ctx
 
@@ -117,23 +137,6 @@ class IterativeInterpreter:
 
         self.last_frame = None
         return val
-
-    def print_stacktrace(self):
-        print('Call Stack (most recent last):')
-        for op in self.operation_stack:
-            if op.gi_code.co_name.startswith('handle_'):
-                print(' ', op.gi_frame.f_locals['expr'].print_short())
-            elif op.gi_code.co_name == '__call__':
-                func = op.gi_frame.f_locals['self']
-
-                print('  (%s %s)' % (getattr(func, 'name', '<anonymous>'), ' '.join([
-                    '%s=%s' % (
-                        formal, str(actual) if len(str(actual)) < 25 else str(actual)[:25] + ' ... '
-                    ) for formal, actual in op.gi_frame.f_locals['bindings'].items()
-                ])))
-
-        if self.last_frame and 'expr' in self.last_frame.f_locals:
-            print('Exception happened here:', self.last_frame.f_locals['expr'])
 
     def eval(self, expr, ctx):
         if isinstance(expr, ExpressionTree):
@@ -222,8 +225,12 @@ class IterativeInterpreter:
 
     def handle_do(self, ctx, expr, *children):
         result = None
-        for child in children:
-            result = yield child, ctx
+        it = IterativeInterpreter.vararg_iterator(children)
+        for arg in it:
+            if isinstance(arg, (Token, ExpressionTree)):
+                val = yield arg, ctx
+                arg = it.send(val)
+            result = yield arg, ctx
         yield result, ctx
 
     def handle_pyimport(self, ctx, expr, *modules):
@@ -245,14 +252,6 @@ class IterativeInterpreter:
         obj = yield obj, ctx
         yield getattr(obj, self.ensure_identifier(member)), ctx
 
-    def handle_quote(self, ctx, expr, *children):
-        def recurse(expr):
-            return [
-                recurse(c) if isinstance(c, ExpressionTree) else c
-                for c in expr.children
-            ]
-        return recurse(expr)
-
     def handle_def(self, ctx, expr, *children):
         value = None
         for i in range(0, len(children), 2):
@@ -267,19 +266,41 @@ class IterativeInterpreter:
     def handle_comment(self, ctx, expr, *children):
         pass
 
+    @staticmethod
+    def vararg_iterator(vargs):
+        iterating_on_vargs = False
+        for arg in vargs:
+            if isinstance(arg, Token) and arg.value == '&':
+                iterating_on_vargs = True
+                continue
+
+            val = yield arg
+            if iterating_on_vargs:
+                yield from val
+            else:
+                yield val
+
     def handle_and(self, ctx, expr, *children):
-        for child in children:
-            val = yield child, ctx
-            if not val:
+        it = IterativeInterpreter.vararg_iterator(children)
+        for arg in it:
+            if isinstance(arg, (Token, ExpressionTree)):
+                val = yield arg, ctx
+                arg = it.send(val)
+
+            if not arg:
                 yield False, ctx
                 break
         else:
             yield True, ctx
 
     def handle_or(self, ctx, expr, *children):
-        for child in children:
-            val = yield child, ctx
-            if val:
+        it = IterativeInterpreter.vararg_iterator(children)
+        for arg in it:
+            if isinstance(arg, (Token, ExpressionTree)):
+                val = yield arg, ctx
+                arg = it.send(val)
+
+            if arg:
                 yield True, ctx
                 break
         else:

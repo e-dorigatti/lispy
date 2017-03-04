@@ -26,7 +26,7 @@ pars: interpreting!
 ```
 
 
-## Main Feature
+## Main Features
 
 ### REPL
 Based on [python-prompt-toolkit](https://github.com/jonathanslenders/python-prompt-toolkit);
