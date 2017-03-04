@@ -1,7 +1,7 @@
-from lispy.interpreter import IterativeInterpreter
 import pytest
-from lispy.utils import parse_expr, eval_expr, load_stdlib
 
+from lispy.interpreter import IterativeInterpreter
+from lispy.utils import eval_expr, load_stdlib, parse_expr
 
 
 def test_inc():

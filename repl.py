@@ -1,13 +1,15 @@
-import click
 import traceback
-from lispy.tokenizer import Tokenizer
+
+import click
 from prompt_toolkit import prompt
-from prompt_toolkit.token import Token
-from prompt_toolkit.validation import Validator, ValidationError
 from prompt_toolkit.history import InMemoryHistory
-from lispy.expression import ExpressionTree
+from prompt_toolkit.token import Token
+from prompt_toolkit.validation import ValidationError, Validator
+
 from lispy.context import ExecutionContext
+from lispy.expression import ExpressionTree
 from lispy.interpreter import IterativeInterpreter
+from lispy.tokenizer import Tokenizer
 from lispy.utils import eval_expr
 
 

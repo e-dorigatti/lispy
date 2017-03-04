@@ -1,11 +1,10 @@
-import importlib
-import re
 import inspect
-import types
+import re
 
+import importlib
+import types
 from lispy.context import ExecutionContext
 from lispy.expression import ExpressionTree
-from lispy.context import ExecutionContext
 from lispy.tokenizer import Token
 from lispy.utils import load_stdlib
 
