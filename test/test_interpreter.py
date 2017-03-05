@@ -132,3 +132,13 @@ def test_or():
 def test_anonymous_functions():
     inpr = IterativeInterpreter()
     assert eval_expr('((# * %0 2) 2)', inpr) == 4
+
+
+def test_quote():
+    inpr = IterativeInterpreter()
+    assert eval_expr('(quote + 1 2)', inpr) == ['+', 1, 2]
+    assert eval_expr('(quote 1 2 (3 (4 5) 6) 7)', inpr) == [1, 2, [3, [4, 5], 6], 7]
+    assert eval_expr('(quote + 1 ~(+ 1 1))', inpr) == ['+', 1, 2]
+
+    with pytest.raises(RuntimeError):
+        eval_expr('(+ ~(= 1 0) 2)', inpr)

@@ -336,3 +336,38 @@ class IterativeInterpreter:
 
     def handle_hash(self, ctx, expr, *children):
         yield ValueResult(AnonymousFunction(ctx, children), ctx)
+
+    def handle_tick(self, ctx, expr, *children):
+        return self.handle_quote(ctx, expr, *children)
+
+    def handle_quote(self, ctx, expr, *children):
+        to_expand = [children]
+        expanded = [[]]
+        progress = [0]
+
+        while True:  # bad design... but it's 2:41 AM
+            if progress[-1] < len(to_expand[-1]):
+                cur = to_expand[-1][progress[-1]]
+                progress[-1] += 1
+
+                if isinstance(cur, Token):
+                    val = cur.value
+                    if val == '~':
+                        if progress[-1] == len(to_expand[-1]):
+                            raise RuntimeError('nothing to un-quote')
+                        val = yield CodeResult(to_expand[-1][progress[-1]], ctx)
+                        progress[-1] += 1
+                    expanded[-1].append(val)
+                else:
+                    to_expand.append(cur)
+                    expanded.append([])
+                    progress.append(0)
+            else:
+                to_expand.pop()
+                progress.pop()
+                res = expanded.pop()
+                if not expanded:
+                    yield ValueResult(res, ctx)
+                    break
+
+                expanded[-1].append(res)
