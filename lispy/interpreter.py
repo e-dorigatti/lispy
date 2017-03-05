@@ -34,7 +34,7 @@ class Function:
             bindings = dict(zip(self.parameters, args))
 
         ctx = ExecutionContext(self.ctx, **bindings)
-        yield self.body, ctx
+        yield CodeResult(self.body, ctx)
 
     def __eq__(self, other):
         if not isinstance(other, Function):
@@ -49,7 +49,7 @@ class Function:
 
 class AnonymousFunction:
     def __init__(self, ctx, children):
-        self.body = ExpressionTree(children)
+        self.body = list(children)
         self.ctx = ctx
 
     def __call__(self, *args):
@@ -58,13 +58,30 @@ class AnonymousFunction:
             bindings['%' + str(i)] = x
 
         ctx = ExecutionContext(self.ctx, **bindings)
-        yield self.body, ctx
+        yield CodeResult(self.body, ctx)
 
     def __eq__(self, other):
         return False
 
     def __str__(self):
         return '<anonymous function>'
+
+
+class EvaluationResult:
+    def __init__(self, expr, ctx, must_evaluate):
+        self.expr = expr
+        self.ctx = ctx
+        self.must_evaluate = must_evaluate
+
+
+class ValueResult(EvaluationResult):
+    def __init__(self, expr, ctx):
+        super(ValueResult, self).__init__(expr, ctx, must_evaluate=False)
+
+
+class CodeResult(EvaluationResult):
+    def __init__(self, expr, ctx):
+        super(CodeResult, self).__init__(expr, ctx, must_evaluate=True)
 
 
 class IterativeInterpreter:
@@ -82,7 +99,7 @@ class IterativeInterpreter:
         for op in self.operation_stack:
             if op.gi_code.co_name.startswith('handle_'):
                 if op.gi_frame:
-                    print(' ', op.gi_frame.f_locals['expr'].print_short())
+                    print(' ', ExpressionTree.print_short_format(op.gi_frame.f_locals['expr']))
                 else:
                     print('  <unavailable>')
             elif op.gi_code.co_name == '__call__':
@@ -95,12 +112,14 @@ class IterativeInterpreter:
                 ])))
 
         if self.last_frame and 'expr' in self.last_frame.f_locals:
-            print('Exception happened here:', self.last_frame.f_locals['expr'])
+            print('Exception happened here:', ExpressionTree.to_string(
+                self.last_frame.f_locals['expr']
+            ))
 
     def evaluate(self, expr, ctx=None):
         ctx = ctx or self.ctx
 
-        val = self.eval(expr, ctx)
+        val = self.eval(expr.as_list(), ctx)
         if not inspect.isgenerator(val):
             return val
 
@@ -122,28 +141,35 @@ class IterativeInterpreter:
 
             val = self.result_stack[-1]
             try:
-                expr, ctx = op.send(val)
+                res = op.send(val)
             except StopIteration:
                 self.operation_stack.pop()
             else:
                 self.result_stack.pop()
-                res = self.eval(expr, ctx)
-                if isinstance(res, types.GeneratorType):
-                    self.operation_stack.append(res)
+                if res.must_evaluate:
+                    val = self.eval(res.expr, res.ctx)
+                else:
+                    val = res.expr
+
+                if isinstance(val, types.GeneratorType):
+                    self.operation_stack.append(val)
                     self.result_stack.append(None)
                 else:
-                    self.result_stack.append(res)
+                    self.result_stack.append(val)
 
         self.last_frame = None
         return val
 
     def eval(self, expr, ctx):
-        if isinstance(expr, ExpressionTree):
-            if not isinstance(expr.children[0], Token):
+        if isinstance(expr, list):
+            if not isinstance(expr[0], Token):
                 return self.evaluate_function_call(expr, ctx)
 
-            name = expr.children[0].value.replace('.', 'dot').replace('#', 'hash')
-            args = expr.children[1:]
+            name = (expr[0].value
+                    .replace('.', 'dot')
+                    .replace('#', 'hash')
+                    .replace("'", 'tick'))
+            args = expr[1:]
 
             try:
                 handler = getattr(self, 'handle_' + name)
@@ -167,7 +193,9 @@ class IterativeInterpreter:
                 return obj
             elif expr.type == Token.TOKEN_LITERAL:
                 return expr.value
-            else:  # if expr.type == Token.TOKEN_OTHER
+            elif expr.value == '~':
+                raise RuntimeError('cannot un-quote outside a quote')
+            else:
                 return ctx.get(expr.value, expr.value)
         else:
             return expr
@@ -180,8 +208,8 @@ class IterativeInterpreter:
 
     def evaluate_function_call(self, expr, ctx):
         evaluated = []
-        for child in expr.children:
-            val = (yield child, ctx) if child != '&' else child
+        for child in expr:
+            val = (yield CodeResult(child, ctx)) if child != '&' else child
             evaluated.append(val)
 
         fun, args = evaluated[0], evaluated[1:]
@@ -193,44 +221,45 @@ class IterativeInterpreter:
                 raise SyntaxError('cannot have parameters after varargs')
 
         if hasattr(fun, '__call__'):
-            yield fun(*args), ctx
+            val = fun(*args)
+            yield val if isinstance(val, EvaluationResult) else ValueResult(val, ctx)
         else:
             raise NameError(fun)
 
     def handle_if(self, ctx, expr, cond, iftrue, iffalse):
-        cval = yield cond, ctx
+        cval = yield CodeResult(cond, ctx)
         if cval:
-            yield iftrue, ctx
+            yield CodeResult(iftrue, ctx)
         else:
-            yield iffalse, ctx
+            yield CodeResult(iffalse, ctx)
 
     def handle_let(self, ctx, expr, bindings, body):
         new_ctx = ExecutionContext(ctx)
-        for i in range(0, len(bindings.children), 2):
-            name = self.ensure_identifier(bindings.children[i])
-            value = yield bindings.children[i + 1], new_ctx
+        for i in range(0, len(bindings), 2):
+            name = self.ensure_identifier(bindings[i])
+            value = yield CodeResult(bindings[i + 1], new_ctx)
             new_ctx[name] = value
 
-        yield body, new_ctx
+        yield CodeResult(body, new_ctx)
 
     def handle_defn(self, ctx, expr, name, parameters, body):
         formal = [self.ensure_identifier(t) if t.value != '&' else '&'
-                  for t in parameters.children]
+                  for t in parameters]
         f = Function(self.ensure_identifier(name), formal, body, ctx)
 
         if ctx:
             ctx[name.value] = f
-        yield f, ctx
+        yield ValueResult(f, ctx)
 
     def handle_do(self, ctx, expr, *children):
         result = None
         it = IterativeInterpreter.vararg_iterator(children)
         for arg in it:
-            if isinstance(arg, (Token, ExpressionTree)):
-                val = yield arg, ctx
+            if isinstance(arg, (Token, list)):
+                val = yield CodeResult(arg, ctx)
                 arg = it.send(val)
-            result = yield arg, ctx
-        yield result, ctx
+            result = yield ValueResult(arg, ctx)
+        yield ValueResult(result, ctx)
 
     def handle_pyimport(self, ctx, expr, *modules):
         for mod in map(self.ensure_identifier, modules):
@@ -248,16 +277,16 @@ class IterativeInterpreter:
             ctx[name] = getattr(mod, name)
 
     def handle_dot(self, ctx, expr, member, obj):
-        obj = yield obj, ctx
-        yield getattr(obj, self.ensure_identifier(member)), ctx
+        obj = yield CodeResult(obj, ctx)
+        yield CodeResult(getattr(obj, self.ensure_identifier(member)), ctx)
 
     def handle_def(self, ctx, expr, *children):
         value = None
         for i in range(0, len(children), 2):
             name = self.ensure_identifier(children[i])
-            value = yield children[i + 1], ctx
+            value = yield CodeResult(children[i + 1], ctx)
             ctx[name] = value
-        yield value, ctx
+        yield ValueResult(value, ctx)
 
     def handle_call(self, ctx, expr, fun, *args):
         return self.evaluate_function_call(expr, ctx)
@@ -282,28 +311,28 @@ class IterativeInterpreter:
     def handle_and(self, ctx, expr, *children):
         it = IterativeInterpreter.vararg_iterator(children)
         for arg in it:
-            if isinstance(arg, (Token, ExpressionTree)):
-                val = yield arg, ctx
+            if isinstance(arg, (Token, list)):
+                val = yield CodeResult(arg, ctx)
                 arg = it.send(val)
 
             if not arg:
-                yield False, ctx
+                yield ValueResult(False, ctx)
                 break
         else:
-            yield True, ctx
+            yield ValueResult(True, ctx)
 
     def handle_or(self, ctx, expr, *children):
         it = IterativeInterpreter.vararg_iterator(children)
         for arg in it:
-            if isinstance(arg, (Token, ExpressionTree)):
-                val = yield arg, ctx
+            if isinstance(arg, (Token, list)):
+                val = yield CodeResult(arg, ctx)
                 arg = it.send(val)
 
             if arg:
-                yield True, ctx
+                yield ValueResult(True, ctx)
                 break
         else:
-            yield False, ctx
+            yield ValueResult(False, ctx)
 
     def handle_hash(self, ctx, expr, *children):
-        yield AnonymousFunction(ctx, children), ctx
+        yield ValueResult(AnonymousFunction(ctx, children), ctx)

@@ -45,17 +45,40 @@ class ExpressionTree:
         text.append(ind * indent + ')')
         return '\n'.join(text)
 
-    def print_short(self):
-        parts = []
+    def as_list(self):
+        res = []
         for child in self.children:
             if isinstance(child, ExpressionTree):
+                res.append(child.as_list())
+            else:
+                res.append(child)
+        return res
+
+    def print_short(self):
+        return ExpressionTree.print_short_format(self.children)
+
+    def __str__(self):
+        return ExpressionTree.to_string(self.children)
+
+    @staticmethod
+    def print_short_format(children):
+        parts = []
+        for child in children:
+            if isinstance(child, list):
                 parts.append('(' + ' '.join(
-                    '(...)' if isinstance(c, ExpressionTree) else str(c)
-                    for c in child.children
+                    '(...)' if isinstance(c, list) else str(c)
+                    for c in child
                 ) + ')')
             else:
                 parts.append(str(child))
         return '(%s)' % ' '.join(parts)
 
-    def __str__(self):
-        return '(' + ' '.join(child.__str__() for child in self.children) + ')'
+    @staticmethod
+    def to_string(children):
+        parts = []
+        for child in children:
+            if isinstance(child, list):
+                parts.append(ExpressionTree.to_string(child))
+            else:
+                parts.append(str(child))
+        return '(' + ' '.join(parts) + ')'

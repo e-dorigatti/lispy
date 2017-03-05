@@ -3,6 +3,7 @@ import pytest
 from lispy.context import ExecutionContext
 from lispy.interpreter import IterativeInterpreter
 from lispy.utils import eval_expr, parse_expr
+from lispy.globals import GLOBALS
 
 
 def test_balanced_parentheses():
