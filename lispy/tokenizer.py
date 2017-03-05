@@ -9,9 +9,9 @@ class Token:
                               'ABCDEFGHIJKLMNOPQRSTUVWXYZ_')
     TOKEN_LITERAL_START = '".0123456789'
 
-    def __init__(self, value, type=None):
+    def __init__(self, value, type_=None):
         self.value = value
-        self.type = type or Token.guess_token_type(value[0])
+        self.type = type_ or Token.guess_token_type(value[0])
 
     @staticmethod
     def guess_token_type(initial_char):
@@ -28,6 +28,14 @@ class Token:
 
     def __str__(self):
         return str(self.value)
+
+    def __repr__(self):
+        return "'%s" % self.value
+
+    def __eq__(self, other):
+        return (isinstance(other, Token)
+                and other.value == self.value
+                and other.type == self.type)
 
 
 class Tokenizer:
@@ -64,9 +72,9 @@ class Tokenizer:
                 new_type = -1
 
             elif (cur_token
-                and ((cur_token.value[-1].isalnum() and char in self.TOKEN_SPLIT_AFTER)
-                    or cur_token.value[-1] in self.TOKEN_SPLIT_BEFORE and char.isalnum())
-                and not inside_quotes):
+                  and ((cur_token.value[-1].isalnum() and char in self.TOKEN_SPLIT_AFTER)
+                      or cur_token.value[-1] in self.TOKEN_SPLIT_BEFORE and char.isalnum())
+                  and not inside_quotes):
 
                 new_type = Token.guess_token_type(char)
             elif not cur_token:

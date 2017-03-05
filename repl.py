@@ -56,6 +56,10 @@ def repl(inpr, **kwargs):
         except:
             inpr.print_stacktrace()
             traceback.print_exc()
+            continue
+
+        if isinstance(result, list):
+            print(ExpressionTree.to_string(result))
         else:
             print(result)
 
@@ -71,8 +75,12 @@ def main(input_file, expression, without_stdlib, **kwargs):
         for f in input_file:
             eval_expr(f.read(), inpr)
     elif expression:
-        res = eval_expr(expression, inpr)
-        print(res)
+        result = eval_expr(expression, inpr)
+
+        if isinstance(result, list):
+            print(ExpressionTree.to_string(result))
+        else:
+            print(result)
     else:
         repl(inpr, **kwargs)
 

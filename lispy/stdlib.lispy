@@ -39,3 +39,13 @@
 (defn curry (function & args1)
     (defn _ ( & args2)
         (function & (+ args1 args2))))
+
+
+(defn cons (x lst) (+ (list x) lst))
+(defn append (lst x) (do ((. append lst) x) lst))
+
+(defmacro when (cond & body)
+    (list 'if cond (cons 'do body) None))
+
+(defmacro unless (cond body)
+    (list 'if (list 'not cond) body None))

@@ -66,3 +66,25 @@ def test_map():
 def test_curry():
     inpr = load_stdlib(IterativeInterpreter())
     assert eval_expr('((curry * 2) 2)', inpr) == 4
+
+
+def test_cons():
+    inpr = load_stdlib(IterativeInterpreter())
+    assert eval_expr('(cons 1 (list 2 3))', inpr) == [1, 2, 3]
+
+
+def test_append():
+    inpr = load_stdlib(IterativeInterpreter())
+    assert eval_expr('(append (list 2 3) 1)', inpr) == [2, 3, 1]
+
+
+def test_when():
+    inpr = load_stdlib(IterativeInterpreter())
+    assert eval_expr('(when (= 1 1) 1 2 3)', inpr) == 3
+    assert eval_expr('(when (!= 1 1) 1 2 3)', inpr) == None
+
+
+def test_unless():
+    inpr = load_stdlib(IterativeInterpreter())
+    assert eval_expr('(unless (= 1 1) 1)', inpr) == None
+    assert eval_expr('(unless (!= 1 1) 1)', inpr) == 1

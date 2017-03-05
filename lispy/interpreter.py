@@ -24,7 +24,7 @@ class Function:
         except ValueError:
             self.has_varargs = False
 
-    def __call__(self, *args):
+    def bind_parameters(self, args):
         if self.has_varargs:
             # pack arguments in varargs
             n = len(self.parameters) - 2
@@ -33,6 +33,10 @@ class Function:
         else:
             bindings = dict(zip(self.parameters, args))
 
+        return bindings
+
+    def __call__(self, *args):
+        bindings = self.bind_parameters(args)
         ctx = ExecutionContext(self.ctx, **bindings)
         yield CodeResult(self.body, ctx)
 
@@ -46,6 +50,8 @@ class Function:
     def __str__(self):
         return '<function "%s">' % self.name
 
+    def __repr__(self):
+        return 'Function(%s, %s)' % (self.name, ', '.join(self.parameters))
 
 class AnonymousFunction:
     def __init__(self, ctx, children):
@@ -66,8 +72,36 @@ class AnonymousFunction:
     def __str__(self):
         return '<anonymous function>'
 
+    def __repr__(Self):
+        return 'AnonymousFunction'
+
+
+class Macro(Function):
+    def __init__(self, name, parameters, body, ctx):
+        super(Macro, self).__init__(name, parameters, body, ctx)
+
+    def __call__(self, *args):
+        bindings = self.bind_parameters(args)
+        new_ctx = ExecutionContext(self.ctx, **bindings)
+        code = yield CodeResult(self.body, new_ctx)
+        yield CodeResult(code, self.ctx)
+
+    def __eq__(self, other):
+        if not isinstance(other, Macro):
+            return False
+        return (self.name == other.name and
+                self.parameters == other.parameters and
+                self.body == other.body)
+
+    def __str__(self):
+        return '<macro "%s">' % self.name
+
+    def __repr__(self):
+        return 'Macro(%s, %s)' % (self.name, ', '.join(self.parameters))
+
 
 class EvaluationResult:
+    """ Result of the evaluation of an expression """
     def __init__(self, expr, ctx, must_evaluate):
         self.expr = expr
         self.ctx = ctx
@@ -75,11 +109,17 @@ class EvaluationResult:
 
 
 class ValueResult(EvaluationResult):
+    """ Result of the evaluation of an expression
+        that does not have to be evaluated (i.e. it's a value)
+    """
     def __init__(self, expr, ctx):
         super(ValueResult, self).__init__(expr, ctx, must_evaluate=False)
 
 
 class CodeResult(EvaluationResult):
+    """ Result of the evaluation of an expression
+        that must be evaluated (i.e. it's some "code")
+    """
     def __init__(self, expr, ctx):
         super(CodeResult, self).__init__(expr, ctx, must_evaluate=True)
 
@@ -96,13 +136,8 @@ class IterativeInterpreter:
 
     def print_stacktrace(self):
         print('Call Stack (most recent last):')
-        for op in self.operation_stack:
-            if op.gi_code.co_name.startswith('handle_'):
-                if op.gi_frame:
-                    print(' ', ExpressionTree.print_short_format(op.gi_frame.f_locals['expr']))
-                else:
-                    print('  <unavailable>')
-            elif op.gi_code.co_name == '__call__':
+        for op in self.operation_stack[:-1]:
+            if op.gi_code.co_name == '__call__':
                 func = op.gi_frame.f_locals['self']
 
                 print('  (%s %s)' % (getattr(func, 'name', '<anonymous>'), ' '.join([
@@ -110,6 +145,10 @@ class IterativeInterpreter:
                         formal, str(actual) if len(str(actual)) < 25 else str(actual)[:25] + ' ... '
                     ) for formal, actual in op.gi_frame.f_locals['bindings'].items()
                 ])))
+            elif op.gi_frame:
+                print(' ', ExpressionTree.print_short_format(op.gi_frame.f_locals['expr']))
+            else:
+                print('  <unavailable>')
 
         if self.last_frame and 'expr' in self.last_frame.f_locals:
             print('Exception happened here:', ExpressionTree.to_string(
@@ -146,7 +185,9 @@ class IterativeInterpreter:
                 self.operation_stack.pop()
             else:
                 self.result_stack.pop()
-                if res.must_evaluate:
+                if not isinstance(res, EvaluationResult):
+                    val = self.eval(res, self.ctx)
+                elif res.must_evaluate:
                     val = self.eval(res.expr, res.ctx)
                 else:
                     val = res.expr
@@ -195,6 +236,8 @@ class IterativeInterpreter:
                 return expr.value
             elif expr.value == '~':
                 raise RuntimeError('cannot un-quote outside a quote')
+            elif expr.value[0] == "'":
+                return Token(expr.value[1:])
             else:
                 return ctx.get(expr.value, expr.value)
         else:
@@ -207,12 +250,15 @@ class IterativeInterpreter:
             return token.value
 
     def evaluate_function_call(self, expr, ctx):
-        evaluated = []
-        for child in expr:
-            val = (yield CodeResult(child, ctx)) if child != '&' else child
-            evaluated.append(val)
+        fun = yield CodeResult(expr[0], ctx)
+        args = []
+        if not isinstance(fun, Macro):
+            for child in expr[1:]:
+                val = yield CodeResult(child, ctx) if child != '&' else child
+                args.append(val)
+        else:
+            args = [e if not isinstance(e, Token) or e.value != '&' else '&' for e in expr[1:]]
 
-        fun, args = evaluated[0], evaluated[1:]
         if len(args) > 1 and '&' in args:
             # unpack actual varargs
             if args[-2] == '&':
@@ -220,11 +266,18 @@ class IterativeInterpreter:
             else:
                 raise SyntaxError('cannot have parameters after varargs')
 
-        if hasattr(fun, '__call__'):
+        if isinstance(fun, (Function, AnonymousFunction, Macro)):
+            yield CodeResult(fun(*args), ctx)
+        elif hasattr(fun, '__call__'):
             val = fun(*args)
-            yield val if isinstance(val, EvaluationResult) else ValueResult(val, ctx)
+            yield ValueResult(val, ctx)
         else:
-            raise NameError(fun)
+            raise RuntimeError('not a function: "%s"' % fun)
+
+    def handle_macroexpand(self, ctx, expr, macro, *args):
+        mac = yield CodeResult(macro, ctx)
+        val = next(mac(*args))
+        yield val
 
     def handle_if(self, ctx, expr, cond, iftrue, iffalse):
         cval = yield CodeResult(cond, ctx)
@@ -242,14 +295,20 @@ class IterativeInterpreter:
 
         yield CodeResult(body, new_ctx)
 
-    def handle_defn(self, ctx, expr, name, parameters, body):
+    def build_callable(self, Callable, ctx, expr, name, parameters, body):
         formal = [self.ensure_identifier(t) if t.value != '&' else '&'
                   for t in parameters]
-        f = Function(self.ensure_identifier(name), formal, body, ctx)
+        f = Callable(self.ensure_identifier(name), formal, body, ctx)
 
         if ctx:
             ctx[name.value] = f
-        yield ValueResult(f, ctx)
+        return ValueResult(f, ctx)
+
+    def handle_defn(self, ctx, expr, name, parameters, body):
+        yield self.build_callable(Function, ctx, expr, name, parameters, body)
+
+    def handle_defmacro(self, ctx, expr, name, parameters, body):
+        yield self.build_callable(Macro, ctx, expr, name, parameters, body)
 
     def handle_do(self, ctx, expr, *children):
         result = None
@@ -351,12 +410,13 @@ class IterativeInterpreter:
                 progress[-1] += 1
 
                 if isinstance(cur, Token):
-                    val = cur.value
-                    if val == '~':
+                    if cur.value == '~':
                         if progress[-1] == len(to_expand[-1]):
                             raise RuntimeError('nothing to un-quote')
                         val = yield CodeResult(to_expand[-1][progress[-1]], ctx)
                         progress[-1] += 1
+                    else:
+                        val = cur
                     expanded[-1].append(val)
                 else:
                     to_expand.append(cur)

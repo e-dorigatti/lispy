@@ -1,4 +1,4 @@
-# Lispy - A LISP Interpreter Written in Python
+# Lispy - A LISP (clojure-ish) Interpreter Written in Python
 There are many reasons why you would want to write an interpreter, even more so if you
 enjoyed your courses in compilers and programming languages semantics, like I did.
 Why LISP? Because its syntax is very simple, so you don't have to waste time in
@@ -28,17 +28,6 @@ pars: interpreting!
 
 ## Main Features
 
-### REPL
-Based on [python-prompt-toolkit](https://github.com/jonathanslenders/python-prompt-toolkit);
-it still needs some love, but has the basics. Use `ctrl+enter` to evaluate an
-input, as `enter` inserts a new line:
-
-```
-$ python repl.py
->>> (+ 1 1)
-2
-```
-
 ### Python interoperability
 Thanks to `pyimport` and `pyimport_from`, it is possible to import python
 objects and use them:
@@ -46,7 +35,6 @@ objects and use them:
 ```
 >>> (pyimport_from sklearn.svm SVC)
 ... (pyimport_from sklearn datasets)
-... (pyimport_from sklearn.model_selection train_test_split)
 ...
 ... (let (iris ((. load_iris datasets))
 ...         X (. data iris) y (. target iris)
@@ -58,9 +46,34 @@ Training accuracy:  0.986666666667
 None
 ```
 
+### Macros
+A word of caution: I studied macros while implementing them here, so...
+Anyway, these are two simple macros that are included in the standard
+library:
+
+```
+>>> (defmacro when (cond & body)
+...     (list 'if cond (cons 'do body) None))
+<macro "when">
+>>> (macroexpand when (= 1 1) (print "Hello") (print "World!"))
+(if (= 1 1) (do (print Hello) (print World!)) None)
+>>> (when (= 1 1) (print "Hello") (print "World!"))
+Hello
+World!
+None
+>>> (defmacro unless (cond body)
+...     (list 'if (list 'not cond) body None))
+<macro "unless">
+>>> (macroexpand unless (!= 1 1) (print "Nope!"))
+(if (not (!= 1 1)) (print Nope!) None)
+>>> (unless (!= 1 1) (print "Nope!"))
+Nope!
+None
+```
+
+
 ### Stack Traces
-When exceptions happen, the stacktrace of the interpreted code is printed, together
-with a python stacktrace of the interpreter (not shown here)
+When exceptions happen, the stacktrace of the interpreted code is printed, together with a python stacktrace of the interpreter (not shown here)
 
 ```
 >>> (defn stupid_divide (x)
@@ -70,19 +83,35 @@ with a python stacktrace of the interpreter (not shown here)
 ...             (/ x y))))
 ... (stupid_divide 3)
 Call Stack (most recent last):
+  (stupid_divide 3)
   (stupid_divide x=3)
   (if (= x 0) (/ 100 x) (let (...) (...)))
   (let (y (...)) (/ x y))
+  (stupid_divide (dec x))
   (stupid_divide x=2)
   (if (= x 0) (/ 100 x) (let (...) (...)))
   (let (y (...)) (/ x y))
+  (stupid_divide (dec x))
   (stupid_divide x=1)
   (if (= x 0) (/ 100 x) (let (...) (...)))
   (let (y (...)) (/ x y))
+  (stupid_divide (dec x))
   (stupid_divide x=0)
   (if (= x 0) (/ 100 x) (let (...) (...)))
 Exception happened here: (/ 100 x)
 ```
+
+### REPL
+Based on [python-prompt-toolkit](https://github.com/jonathanslenders/python-prompt-toolkit);
+it still needs some love, but has the basics. Use `ctrl+enter` to evaluate an
+input, as `enter` inserts a new line:
+
+```
+$ python repl.py
+>>> (+ 1 1)
+2
+```
+
 
 ### Standard library
 It's still tiny, but it's there (`lispy/stdlib.lispy`)! I tried to implement as few
@@ -105,7 +134,7 @@ basically maintains a stack of coroutines and moves parameters and return values
 around (it's recursion disguised!). It's pretty fun, if you ask me: when you are
 evaluating an expression, and need to evaluate  a sub-expression (e.g. when
 evaluating an `if`, you need to evaluate the condition), simply `yield` it, and
-you will magically receive its value back; the last thing you should yield is the
+you will magically receive its value back; the last thing you should `yield` is the
 final value of the expression, or an expression to evaluate in its place.
 For example, this is how `(if cond iftrue iffalse)` is evaluated:
 
@@ -119,7 +148,7 @@ def handle_if(self, ctx, expr, cond, iftrue, iffalse):
         yield CodeResult(iffalse, ctx)
 ```
 
-Note that `cond`, `iftrue` and `iffalse` are expression trees, while `cval` is the
+Note that `cond`, `iftrue` and `iffalse` are raw expressions, while `cval` is the
 evaluated value of `cond` (e.g. if `cond` is `(= 1 0)` then `cval` will be python's
 `False`). Finally, `CodeResult` tells the interpreter to evaluate either `iftrue` of
 `iffalse` to get the value of the condition. On the other hand, `ValueResult` indicates
@@ -127,7 +156,7 @@ that the result is already a value and does not need to be evaluated; this disti
 is needed because lispy is [homoiconic](https://en.wikipedia.org/wiki/Homoiconicity),
 which basically means that code and data have the same representation, thus you may
 not be able to know whether an expression is actual _code_ or just a _value_ resulting
-from the evaluation of another expression.
+from the evaluation of another expression (most notably, macros and quoted stuff).
 
 In case you are wondering, `ctx` is a variable that holds the execution context in
 which the expression is evaluated; in other words, it is a kind of dictionary that
@@ -144,12 +173,6 @@ be used as a function from the LISP code! This made integrating python into Lisp
 straightforward, and relieves me from the burden of implementing lists and
 dicts myself (which would entail nuking the tokenization/parsing modules), as well
 as anything else that is found in the python ecosystem!
-
-## Roadmap
-Things I would like to implement, sooner or later:
- - Macros (I need to understand them myself, first)
- - A decent REPL
- - A real parser
 
 ## Syntax
 This is what is currently supported, and how to do it.
@@ -175,10 +198,15 @@ argument (e.g. `%1` is the *second* argument). It is equivalent to
 `(defn _ (%0 ... %m) (<expr-1> ... <expr-n>))`, note the parentheses surrounding
 the wrapped expressions.
 
-#### Function Invokation
+#### Macro Definition
+`(defmacro <name> (arg-1 ... arg-n [& vararg]) <body>)`
+
+Introduces a new macro.
+
+#### Function/Macro Invokation
 `(<function> <arg-1> ... <arg-n> [& <vararg>])`
 
-Evaluates to the value returned by the function called with the given parameters.
+Evaluates to the value returned by the function/macro called with the given parameters.
 The last argument can be a vararg. `<function>` can be a name or an expression
 that evaluates to a function (e.g. an anonymous function).
 
@@ -220,3 +248,30 @@ Returns the property of the given object.
 `(comment <text>)`
 
 Ignores the content.
+
+
+#### Quoting and Unquoting
+`(quote <expr-1> ... <expr-n>)` or shortcut `(' <expr-1> ... <expr-n>)`, use 
+`'<token>` to quote a single token.
+
+Quotes the given token/expressions, meaning that they will not evaluated but returned
+"as is". The symbol `~` can be used to un-quote the expression following it (careful,
+`~name` is a single token, thus it will not be un-quoted, use a space for it: `~ name`).
+
+For example:
+
+```
+>>> (let (x 2) (' 1 x (inc x) 4))
+(1 x (inc x) 4)
+>>> (let (x 2) (' 1 ~ x ~(inc x) 4))
+(1 2 3 4)
+>>> (let (x 2) (' 1 ~ x ~(inc 'x) 4))
+Call Stack (most recent last):
+  (let (x 2) (' 1 ~ x ~ (...) 4))
+  (' 1 ~ x ~ (inc 'x) 4)
+  (inc 'x)
+  (inc x=x)
+Exception happened here: (+ x 1)
+...
+TypeError: unsupported operand type(s) for +=: 'Token' and 'int'
+```

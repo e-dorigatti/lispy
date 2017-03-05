@@ -4,6 +4,7 @@ from lispy.context import ExecutionContext
 from lispy.interpreter import IterativeInterpreter
 from lispy.utils import eval_expr, parse_expr
 from lispy.globals import GLOBALS
+from lispy.tokenizer import Token
 
 
 def test_balanced_parentheses():
@@ -136,9 +137,26 @@ def test_anonymous_functions():
 
 def test_quote():
     inpr = IterativeInterpreter()
-    assert eval_expr('(quote + 1 2)', inpr) == ['+', 1, 2]
-    assert eval_expr('(quote 1 2 (3 (4 5) 6) 7)', inpr) == [1, 2, [3, [4, 5], 6], 7]
-    assert eval_expr('(quote + 1 ~(+ 1 1))', inpr) == ['+', 1, 2]
+
+    def t(val):
+        return Token(val, Token.guess_token_type(str(val)[0]))
+
+    assert eval_expr('(quote + 1 2)', inpr) == [t('+'), t(1), t(2)]
+    assert eval_expr('(quote 1 2 (3 (4 5) 6) 7)', inpr) == [
+        t(1), t(2), [t(3), [t(4), t(5)], t(6)], t(7)
+    ]
+    assert eval_expr('(quote + 1 ~(+ 1 1))', inpr) == [t('+'), t(1), 2]
 
     with pytest.raises(RuntimeError):
         eval_expr('(+ ~(= 1 0) 2)', inpr)
+
+
+def test_macro():
+    inpr = IterativeInterpreter()
+    eval_expr('(defmacro infix (args) (list (nth args 1) (nth args 0) (nth args 2)))', inpr)
+
+    assert eval_expr('(macroexpand infix (1 + 1))', inpr) == [
+        Token('+', Token.TOKEN_OTHER), Token(1, Token.TOKEN_LITERAL), Token(1, Token.TOKEN_LITERAL)
+    ]
+
+    assert eval_expr('(infix (1 + 1))', inpr) == 2

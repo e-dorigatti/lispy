@@ -1,4 +1,5 @@
 from functools import reduce
+from lispy.expression import ExpressionTree
 
 GLOBALS = {}
 
@@ -82,7 +83,13 @@ def greatereqthan(*args):
 
 @glob('print')
 def print_(*args):
-    print(' '.join(map(str, args)))
+    parts = []
+    for each in args:
+        if isinstance(each, list):
+            parts.append(ExpressionTree.to_string(each))
+        else:
+            parts.append(str(each))
+    print(' '.join(parts))
 
 
 @glob('readline')
