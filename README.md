@@ -34,7 +34,7 @@ it still needs some love, but has the basics. Use `ctrl+enter` to evaluate an
 input, as `enter` inserts a new line:
 
 ```
-$ python repl.py -S
+$ python repl.py
 >>> (+ 1 1)
 2
 ```
@@ -112,17 +112,22 @@ For example, this is how `(if cond iftrue iffalse)` is evaluated:
 
 ```
 def handle_if(self, ctx, expr, cond, iftrue, iffalse):
-    cval = yield cond, ctx
+    cval = yield CodeResult(cond, ctx)
     if cval:
-        yield iftrue, ctx
+        yield CodeResult(iftrue, ctx)
     else:
-        yield iffalse, ctx
+        yield CodeResult(iffalse, ctx)
 ```
 
 Note that `cond`, `iftrue` and `iffalse` are expression trees, while `cval` is the
 evaluated value of `cond` (e.g. if `cond` is `(= 1 0)` then `cval` will be python's
-`False`). Finally, the interpreter will evaluate either `iftrue` of `iffalse` to get
-the value of the condition.
+`False`). Finally, `CodeResult` tells the interpreter to evaluate either `iftrue` of
+`iffalse` to get the value of the condition. On the other hand, `ValueResult` indicates
+that the result is already a value and does not need to be evaluated; this distinction
+is needed because lispy is [homoiconic](https://en.wikipedia.org/wiki/Homoiconicity),
+which basically means that code and data have the same representation, thus you may
+not be able to know whether an expression is actual _code_ or just a _value_ resulting
+from the evaluation of another expression.
 
 In case you are wondering, `ctx` is a variable that holds the execution context in
 which the expression is evaluated; in other words, it is a kind of dictionary that
