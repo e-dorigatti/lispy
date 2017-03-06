@@ -3,7 +3,7 @@ import re
 
 import importlib
 import types
-from lispy.context import ExecutionContext
+from lispy.context import ExecutionContext, MergedExecutionContext
 from lispy.expression import ExpressionTree
 from lispy.tokenizer import Token
 from lispy.utils import load_stdlib
@@ -35,10 +35,10 @@ class Function:
 
         return bindings
 
-    def __call__(self, *args):
+    def __call__(self, ctx, *args):
         bindings = self.bind_parameters(args)
-        ctx = ExecutionContext(self.ctx, **bindings)
-        yield CodeResult(self.body, ctx)
+        new_ctx = MergedExecutionContext(ExecutionContext(ctx, **bindings), self.ctx)
+        yield CodeResult(self.body, new_ctx)
 
     def __eq__(self, other):
         if not isinstance(other, Function):
@@ -58,13 +58,13 @@ class AnonymousFunction:
         self.body = list(children)
         self.ctx = ctx
 
-    def __call__(self, *args):
+    def __call__(self, ctx, *args):
         bindings = {}
         for i, x in enumerate(args):
             bindings['%' + str(i)] = x
 
-        ctx = ExecutionContext(self.ctx, **bindings)
-        yield CodeResult(self.body, ctx)
+        new_ctx = MergedExecutionContext(ExecutionContext(bindings), ctx, self.ctx)
+        yield CodeResult(self.body, new_ctx)
 
     def __eq__(self, other):
         return False
@@ -80,11 +80,12 @@ class Macro(Function):
     def __init__(self, name, parameters, body, ctx):
         super(Macro, self).__init__(name, parameters, body, ctx)
 
-    def __call__(self, *args):
+    def __call__(self, ctx, *args):
         bindings = self.bind_parameters(args)
-        new_ctx = ExecutionContext(self.ctx, **bindings)
+
+        new_ctx = MergedExecutionContext(ExecutionContext(bindings), ctx, self.ctx)
         code = yield CodeResult(self.body, new_ctx)
-        yield CodeResult(code, self.ctx)
+        yield CodeResult(code, ctx)
 
     def __eq__(self, other):
         if not isinstance(other, Macro):
@@ -267,7 +268,7 @@ class IterativeInterpreter:
                 raise SyntaxError('cannot have parameters after varargs')
 
         if isinstance(fun, (Function, AnonymousFunction, Macro)):
-            yield CodeResult(fun(*args), ctx)
+            yield CodeResult(fun(ctx, *args), ctx)
         elif hasattr(fun, '__call__'):
             val = fun(*args)
             yield ValueResult(val, ctx)
@@ -276,7 +277,7 @@ class IterativeInterpreter:
 
     def handle_macroexpand(self, ctx, expr, macro, *args):
         mac = yield CodeResult(macro, ctx)
-        val = next(mac(*args))
+        val = next(mac(ctx, *args))
         yield val
 
     def handle_if(self, ctx, expr, cond, iftrue, iffalse):
@@ -300,7 +301,7 @@ class IterativeInterpreter:
                   for t in parameters]
         f = Callable(self.ensure_identifier(name), formal, body, ctx)
 
-        if ctx:
+        if ctx:  # put the callable in the same context, so as to allow recursive calls
             ctx[name.value] = f
         return ValueResult(f, ctx)
 

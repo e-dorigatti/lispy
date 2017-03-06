@@ -160,3 +160,8 @@ def test_macro():
     ]
 
     assert eval_expr('(infix (1 + 1))', inpr) == 2
+
+
+def test_dynamic_bindings():
+    inpr = IterativeInterpreter()
+    assert eval_expr('(defn f (x) (+ x y)) (let (y 1) (f 2))', inpr) == 3

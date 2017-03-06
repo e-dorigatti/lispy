@@ -39,3 +39,32 @@ class ExecutionContext(object):
 
     def __str__(self):
         return '%s --> %s' % (self.bindings, self.parent)
+
+
+class MergedExecutionContext(ExecutionContext):
+    def __init__(self, *contexts):
+        super(MergedExecutionContext, self).__init__(None)
+        self.contexts = contexts
+
+    def __getitem__(self, item):
+        for ctx in self.contexts:
+            try:
+                return ctx[item]
+            except (NameError, KeyError):
+                pass
+        raise NameError(item)
+
+    def __setitem__(self, item, value):
+        self.contexts[0][item] = value
+
+    def __contains__(self, item):
+        for ctx in self.contexts:
+            if item in ctx:
+                return True
+        return False
+
+    def get(self, key, default=None):
+        try:
+            return self[key]
+        except NameError:
+            return default
