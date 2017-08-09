@@ -72,7 +72,7 @@ class AnonymousFunction:
     def __str__(self):
         return '<anonymous function>'
 
-    def __repr__(Self):
+    def __repr__(self):
         return 'AnonymousFunction'
 
 
@@ -210,7 +210,8 @@ class IterativeInterpreter:
             name = (expr[0].value
                     .replace('.', 'dot')
                     .replace('#', 'hash')
-                    .replace("'", 'tick'))
+                    .replace("'", 'tick')
+                    .replace('$', 'dollar'))
             args = expr[1:]
 
             try:
@@ -432,3 +433,9 @@ class IterativeInterpreter:
                     break
 
                 expanded[-1].append(res)
+
+    def handle_dollar(self, ctx, expr, val):
+        if isinstance(val, Token):
+            yield ValueResult(val, ctx)
+        else:
+            yield ValueResult(Token(val), ctx)

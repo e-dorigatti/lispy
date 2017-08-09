@@ -145,3 +145,8 @@ def negate(thing):
 @glob('range')
 def range_list(*args):
     return list(range(*args))
+
+
+@glob('is_list')
+def is_list(*args):
+    return all(isinstance(x, list) for x in args)

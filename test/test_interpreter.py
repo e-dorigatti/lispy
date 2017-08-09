@@ -154,6 +154,7 @@ def test_quote():
 def test_macro():
     inpr = IterativeInterpreter()
     eval_expr('(defmacro infix (args) (list (nth args 1) (nth args 0) (nth args 2)))', inpr)
+    assert eval_expr('(let (i 1) (infix (i + 1)))', inpr) == 2
 
     assert eval_expr('(macroexpand infix (1 + 1))', inpr) == [
         Token('+', Token.TOKEN_OTHER), Token(1, Token.TOKEN_LITERAL), Token(1, Token.TOKEN_LITERAL)

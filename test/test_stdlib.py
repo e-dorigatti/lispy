@@ -53,8 +53,8 @@ def test_skip():
 def test_filter():
     inpr = load_stdlib(IterativeInterpreter())
 
-    res = eval_expr('(filter (defn even (x) (= 0 (% x 2))) (range 10))', inpr)
-    assert res == [0, 2, 4, 6, 8]
+    assert eval_expr('(filter (defn even (x) (= 0 (% x 2))) (range 10))', inpr) == [0, 2, 4, 6, 8]
+    assert eval_expr('(filter (defn even (x) (= 0 (% x 2))) (list))', inpr) == []
 
 
 def test_map():
@@ -71,11 +71,13 @@ def test_curry():
 def test_cons():
     inpr = load_stdlib(IterativeInterpreter())
     assert eval_expr('(cons 1 (list 2 3))', inpr) == [1, 2, 3]
+    assert eval_expr('(cons 1 (list))', inpr) == [1]
 
 
 def test_append():
     inpr = load_stdlib(IterativeInterpreter())
     assert eval_expr('(append (list 2 3) 1)', inpr) == [2, 3, 1]
+    assert eval_expr('(append (list) 1)', inpr) == [1]
 
 
 def test_when():
@@ -88,3 +90,32 @@ def test_unless():
     inpr = load_stdlib(IterativeInterpreter())
     assert eval_expr('(unless (= 1 1) 1)', inpr) == None
     assert eval_expr('(unless (!= 1 1) 1)', inpr) == 1
+
+
+def test_zip():
+    inpr = load_stdlib(IterativeInterpreter())
+    assert eval_expr('(zip (list 1 2) (list 3 4 5) (list 6 7 8 9))', inpr) == [
+        [1, 3, 6], [2, 4, 7]
+    ]
+    assert eval_expr('(zip (list) (list 1 2 3))', inpr) == []
+
+
+def test_extend():
+    inpr = load_stdlib(IterativeInterpreter())
+    assert eval_expr('(extend (list 1 2 3) (list 4 5 6))', inpr) == [1, 2, 3, 4, 5, 6]
+    assert eval_expr('(extend (list) (list 4 5 6))', inpr) == [4, 5, 6]
+    assert eval_expr('(extend (list 1 2 3) (list))', inpr) == [1, 2, 3]
+
+
+def test_flatten():
+    inpr = load_stdlib(IterativeInterpreter())
+    assert eval_expr('(flatten (list 1 2 (list 3 (list 4 (list )) 6 ) 7))', inpr) == [
+        1, 2, 3, 4, 6, 7
+    ]
+
+
+def test_reduce():
+    inpr = load_stdlib(IterativeInterpreter())
+    assert eval_expr('(reduce (# extend %0 %1) (list 1 2) (list 3 4))', inpr) == [
+        1, 2, 3, 4
+    ]

@@ -1,48 +1,81 @@
 (defn inc (x) (+ x 1))
 (defn dec (x) (- x 1))
-
 (defn first (lst) (nth lst 0))
+(defn second (lst) (nth lst 1))
 (defn last (lst) (nth lst -1))
+(defn zero? (x) (= x 0))
+(defn empty? (lst) (= 0 (len lst)))
+(defn cons (x lst) (+ (list x) lst))
+(defn append (lst x) (do ((. append lst) x) lst))
+(defn extend (lst1 lst2) (do ((. extend lst1) lst2) lst1))
 
 (defn rest (lst)
     (do
-        (defn aux (i)
-            (if (= i (len lst)) (list)
-                (let (first (if (= i 0) (list) (list (nth lst i)))
-                        rest (if (< i (len lst)) (aux (inc i)) (list)))
-                    (+ first rest))))
-        (aux 0)))
+        (defn aux (i result)
+            (if (= i (len lst)) result
+            (if (zero? i) (aux (inc i) result)
+            (aux (inc i) (append result (nth lst i))))))
+        (aux 0 (list))))
 
 (defn skip (count lst)
     (do
-        (defn aux (l i)
-            (if (<= i 0) l (skip (dec i) (rest l))))
-        (aux lst count)))
+        (defn aux (i result)
+            (if (= i (len lst)) result
+            (if (< i count) (aux (inc i) result)
+            (aux (inc i) (append result (nth lst i))))))
+        (aux 0 (list))))
 
 (defn filter (function lst)
     (do
-        (defn aux (l)
-            (if (not l) (list)
-            (if (function (first l))
-                (list (first l) & (aux (rest l)))
-                (aux (rest l)))))
-        (aux lst)))
+        (defn aux (i result)
+            (if (= i (len lst)) result
+            (if (function (nth lst i))
+                (aux (inc i) (append result (nth lst i)))
+                (aux (inc i) result))))
+        (aux 0 (list))))
 
 (defn map (function lst)
     (do
         (defn aux (l)
-            (if (not l)
+            (if (empty? l)
                 (list)
-                (+ (list (function (first l))) (aux (rest l)))))
+                (cons (function (first l)) (aux (rest l)))))
         (aux lst)))
 
 (defn curry (function & args1)
     (defn _ ( & args2)
         (function & (+ args1 args2))))
 
+(defn zip (& lists)
+    (let (length (min (map (# len %0) lists)))
+        (do (defn aux (i result)
+            (if (>= i length) result
+                (do
+                    (append result (map (# nth %0 i) lists))
+                    (aux (inc i)))))
+            (aux 0 (list)))))
 
-(defn cons (x lst) (+ (list x) lst))
-(defn append (lst x) (do ((. append lst) x) lst))
+(defn flatten (lst) 
+    (do 
+        (defn aux (i result)
+            (if (>= i (len lst))
+                result
+                (let (item (nth lst i))
+                    (if (is_list item)
+                        (aux (inc i) (extend result (flatten item)))
+                        (aux (inc i) (append result item))))))
+        (aux 0 (list))))
+
+(defn reduce (function initial & lst)
+    (do
+        (defn aux (i result)
+            (if (= i (len lst))
+                result
+                (aux (inc i) (function result (nth lst i)))))
+        (aux 0 initial)))
+
+(defn concat (& lists)
+    (reduce (# extend %0 %1) (list) & lists))
 
 (defmacro when (cond & body)
     (list 'if cond (cons 'do body) None))
