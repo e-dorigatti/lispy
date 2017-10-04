@@ -42,9 +42,9 @@ objects and use them:
 ...         clf (SVC))
 ...     (do
 ...         ((. fit clf) X_train y_train)
-...         (print "Training accuracy: " ((. score clf) X_test y_test))))
+...         (print "Accuracy on test set: " ((. score clf) X_test y_test))))
 ...
-Training accuracy:  0.947368421053
+Accuracy on test set:  0.947368421053
 None
 ```
 
@@ -207,12 +207,17 @@ Evaluates to the value returned by the function/macro called with the given para
 The last argument can be a vararg. `<function>` can be a name or an expression
 that evaluates to a function (e.g. an anonymous function).
 
+Supports unpacking of parameters: `(defn f (a (b c)) (+ a b c)) (f 1 (list 2 3))`
+results in `6`.
+
 #### Let Expression
 `(let (name-1 <expr-1> ... name-n <expr-n>) <expr>)`
 
 Introduces new definitions in the context and evaluates `expr`, whose value is
 the value of the whole let expression. The definitions are discarded afterwards
 (i.e. outside this block).
+
+Supports unpacking of variables: `(let (a 1 (b c) (list 2 3)) (+ a b c))` results in `6`.
 
 #### Name Definition
 `(def name-1 <expr-1> ... name-n <expr-n>)`
