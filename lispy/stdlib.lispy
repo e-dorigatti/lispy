@@ -52,7 +52,7 @@
             (if (>= i length) result
                 (do
                     (append result (map (# nth %0 i) lists))
-                    (aux (inc i)))))
+                    (aux (inc i) result))))
             (aux 0 (list)))))
 
 (defn flatten (lst) 

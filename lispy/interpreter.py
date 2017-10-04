@@ -25,13 +25,36 @@ class Function:
             self.has_varargs = False
 
     def bind_parameters(self, args):
+        bindings = {}
+        def bind_tuple(formals, actuals):
+            for f, a in zip(formals, actuals):
+                expand_f = isinstance(f, (list, tuple))
+                expand_a = isinstance(a, (list, tuple))
+
+                if expand_f and expand_a:
+                    bind_tuple(f, a)
+                elif expand_a or (not expand_a and not expand_f):
+                    bindings[f] = a
+                else:
+                    raise RuntimeError('cannot unpack parameters "%s" to "%s"' % (
+                        a, ExpressionTree.to_string(f)
+                    ))
+
+        n = len(self.parameters)
         if self.has_varargs:
-            # pack arguments in varargs
-            n = len(self.parameters) - 2
-            bindings = dict(zip(self.parameters[:n], args[:n]))
+            n -= 2
+
+        for i in range(n):
+            if isinstance(self.parameters[i], (tuple, list)):
+                try:
+                    bind_tuple(self.parameters[i], args[i])
+                except TypeError as exc:
+                    raise RuntimeError('cannot unpack parameters') from exc
+            else:
+                bindings[self.parameters[i]] = args[i]
+        
+        if self.has_varargs:
             bindings[self.parameters[-1]] = list(args[n:])
-        else:
-            bindings = dict(zip(self.parameters, args))
 
         return bindings
 
@@ -246,6 +269,9 @@ class IterativeInterpreter:
             return expr
 
     def ensure_identifier(self, token):
+        if not isinstance(token, Token):
+            raise SyntaxError('cannot use "%s" as an identifier' % token)
+
         if token.type != Token.TOKEN_IDENTIFIER:
             raise SyntaxError('"%s" is not a valid identifier' % token.value)
         else:
@@ -297,10 +323,31 @@ class IterativeInterpreter:
 
         yield CodeResult(body, new_ctx)
 
-    def build_callable(self, Callable, ctx, expr, name, parameters, body):
-        formal = [self.ensure_identifier(t) if t.value != '&' else '&'
-                  for t in parameters]
-        f = Callable(self.ensure_identifier(name), formal, body, ctx)
+    def build_callable(self, callable_cls, ctx, expr, name, parameters, body):
+        def recursively_ensure_identifiers(lst):
+            return [
+                recursively_ensure_identifiers(x) if isinstance(x, (tuple, list))
+                else self.ensure_identifier(x)
+                for x in lst
+            ]
+
+        formal = []
+        has_varargs = False
+        for i, p in enumerate(parameters):
+            if isinstance(p, Token):
+                if p.value != '&':
+                    formal.append(self.ensure_identifier(p))
+                else:
+                    formal.append('&')
+                    has_varargs = True
+            elif isinstance(p, list):
+                if has_varargs:
+                    raise SyntaxError('cannot use packed arguments after vararg')
+                formal.append(recursively_ensure_identifiers(p))
+            else:
+                raise SyntaxError('cannot use as a parameter: %s' % p)
+
+        f = callable_cls(self.ensure_identifier(name), formal, body, ctx)
 
         if ctx:  # put the callable in the same context, so as to allow recursive calls
             ctx[name.value] = f

@@ -171,3 +171,15 @@ def test_dynamic_bindings():
 def test_dollar():
     inpr = IterativeInterpreter()
     assert eval_expr('(let (x 3) ($ "x"))', inpr) == 3
+
+
+def test_function_arg_unpack():
+    inpr = IterativeInterpreter()
+    eval_expr('(defn f (a (b c) (d (e (f g)))) (+ a b c d e f g))', inpr)
+    assert eval_expr(
+        '(let (a 1 b 1 c 1 d 1 x (list 1 (list 1 1))) (asd a (list b c) (list d x)))', 
+        inpr
+    ) == 7
+
+    with pytest.raises(SyntaxError):
+        eval_expr('(defn g (a & (b c)) (+ a b c))', inpr)
