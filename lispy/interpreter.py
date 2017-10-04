@@ -333,7 +333,7 @@ class IterativeInterpreter:
         try:
             mod = importlib.import_module(module + '.' + name)
             ctx[name] = mod
-        except ModuleNotFoundError:
+        except ImportError:
             mod = importlib.import_module(module)
             ctx[name] = getattr(mod, name)
 
