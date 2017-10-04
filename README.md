@@ -3,7 +3,7 @@ There are many reasons why you would want to write an interpreter, even more so 
 enjoyed your courses in compilers and programming languages semantics, like I did.
 Why LISP? Because its syntax is very simple, so you don't have to waste time in
 coding boring parts such as lexing and parsing, and you can jump straight in the fun
-pars: interpreting!
+parts: interpreting! Also, macros.
 
 ## Example
 ```
