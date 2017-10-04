@@ -166,3 +166,8 @@ def test_macro():
 def test_dynamic_bindings():
     inpr = IterativeInterpreter()
     assert eval_expr('(defn f (x) (+ x y)) (let (y 1) (f 2))', inpr) == 3
+
+
+def test_dollar():
+    inpr = IterativeInterpreter()
+    assert eval_expr('(let (x 3) ($ "x"))', inpr) == 3

@@ -198,11 +198,6 @@ argument (e.g. `%1` is the *second* argument). It is equivalent to
 `(defn _ (%0 ... %m) (<expr-1> ... <expr-n>))`, note the parentheses surrounding
 the wrapped expressions.
 
-#### Macro Definition
-`(defmacro <name> (arg-1 ... arg-n [& vararg]) <body>)`
-
-Introduces a new macro.
-
 #### Function/Macro Invokation
 `(<function> <arg-1> ... <arg-n> [& <vararg>])`
 
@@ -249,6 +244,10 @@ Returns the property of the given object.
 
 Ignores the content.
 
+#### Macro Definition
+`(defmacro <name> (arg-1 ... arg-n [& vararg]) <body>)`
+
+Introduces a new macro.
 
 #### Quoting and Unquoting
 `(quote <expr-1> ... <expr-n>)` or shortcut `(' <expr-1> ... <expr-n>)`, use 
@@ -275,3 +274,28 @@ Exception happened here: (+ x 1)
 ...
 TypeError: unsupported operand type(s) for +=: 'Token' and 'int'
 ```
+
+#### Consider as a Variable Name
+`($ x)`
+
+Considers `x` as a variable name, and evaluate it, e.g. `(let (x 3) ($ "x"))` evaluates to `3`.
+Useful when writing macros, because it causes `x` to be interpreted as a variable after the macro is
+expanded, instead of a string. Consider the `letfn` macro in the standard library:
+
+```
+(defmacro letfn (function expression)
+    (let (fname (first function)
+          fparams (second function)
+          fbody (last function)
+          anon (map (# list '$ (+ "%" (str %0))) (range (len fparams))))
+
+        (list 'let (list fname (list '# 'let (concat & (zip fparams anon)) fbody))
+            expression)))
+```
+
+which is supposed to be used like this: `(letfn (add (x y z) (+ x y z)) (add 1 2 3))`,
+producing `6` as result; the macro is expanded as
+`(let (add (# let (x ($ %0) y ($ %1) z ($ %2)) (+ x y z))) (add 1 2 3))`. The `$` tells
+the interpreter that `%0`, `%1` and `%2` should be interpreted as tokens, and hence take
+the value of `1`, `2` and `3` respectively; without it, they would be interpreted as strings,
+and the result of the expression would be `%0%1%2`.

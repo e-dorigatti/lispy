@@ -82,3 +82,12 @@
 
 (defmacro unless (cond body)
     (list 'if (list 'not cond) body None))
+
+(defmacro letfn (function expression)
+    (let (fname (first function)
+          fparams (second function)
+          fbody (last function)
+          anon (map (# list '$ (+ "%" (str %0))) (range (len fparams))))
+
+        (list 'let (list fname (list '# 'let (concat & (zip fparams anon)) fbody))
+            expression)))

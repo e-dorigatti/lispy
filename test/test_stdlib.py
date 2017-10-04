@@ -119,3 +119,8 @@ def test_reduce():
     assert eval_expr('(reduce (# extend %0 %1) (list 1 2) (list 3 4))', inpr) == [
         1, 2, 3, 4
     ]
+
+
+def test_letfn():
+    inpr = load_stdlib(IterativeInterpreter())
+    assert eval_expr('(letfn (add (x y z) (+ x y z)) (add 1 2 3))', inpr) == 6

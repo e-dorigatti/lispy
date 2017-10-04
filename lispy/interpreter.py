@@ -435,7 +435,5 @@ class IterativeInterpreter:
                 expanded[-1].append(res)
 
     def handle_dollar(self, ctx, expr, val):
-        if isinstance(val, Token):
-            yield ValueResult(val, ctx)
-        else:
-            yield ValueResult(Token(val), ctx)
+        name = val.value if isinstance(val, Token) else val
+        yield ValueResult(ctx[name], ctx)
