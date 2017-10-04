@@ -34,15 +34,17 @@ objects and use them:
 
 ```
 >>> (pyimport_from sklearn.svm SVC)
-... (pyimport_from sklearn datasets)
+... (pyimport_from sklearn.datasets load_iris)
+... (pyimport_from sklearn.model_selection train_test_split)
 ...
-... (let (iris ((. load_iris datasets))
-...         X (. data iris) y (. target iris)
+... (let (iris (load_iris)
+...     (X_train X_test y_train y_test) (train_test_split (. data iris) (. target iris))
 ...         clf (SVC))
 ...     (do
-...         ((. fit clf) X y)
-...         (print "Training accuracy: " ((. score clf) X y))))
-Training accuracy:  0.986666666667
+...         ((. fit clf) X_train y_train)
+...         (print "Training accuracy: " ((. score clf) X_test y_test))))
+...
+Training accuracy:  0.947368421053
 None
 ```
 

@@ -9,6 +9,27 @@ from lispy.tokenizer import Token
 from lispy.utils import load_stdlib
 
 
+def unpack_bind(variable, value, bindings=None):
+    """ binds value to variable, optionally unpacking
+        (a, b) = (0, 2) results in a = 1 and b = 2
+    """
+    binds = bindings or {}
+    for f, a in zip(variable, value):
+        expand_f = isinstance(f, (list, tuple))
+        expand_a = isinstance(a, (list, tuple))
+
+        if expand_f and expand_a:
+            unpack_bind(f, a, binds)
+        elif expand_a or (not expand_a and not expand_f):
+            bindings[f] = a
+        else:
+            raise RuntimeError('cannot unpack "%s" to "%s"' % (
+                a, ExpressionTree.to_string(f)
+            ))
+
+    return binds
+
+
 class Function:
     def __init__(self, name, parameters, body, ctx):
         self.name = name
@@ -26,19 +47,6 @@ class Function:
 
     def bind_parameters(self, args):
         bindings = {}
-        def bind_tuple(formals, actuals):
-            for f, a in zip(formals, actuals):
-                expand_f = isinstance(f, (list, tuple))
-                expand_a = isinstance(a, (list, tuple))
-
-                if expand_f and expand_a:
-                    bind_tuple(f, a)
-                elif expand_a or (not expand_a and not expand_f):
-                    bindings[f] = a
-                else:
-                    raise RuntimeError('cannot unpack parameters "%s" to "%s"' % (
-                        a, ExpressionTree.to_string(f)
-                    ))
 
         n = len(self.parameters)
         if self.has_varargs:
@@ -47,7 +55,7 @@ class Function:
         for i in range(n):
             if isinstance(self.parameters[i], (tuple, list)):
                 try:
-                    bind_tuple(self.parameters[i], args[i])
+                    unpack_bind(self.parameters[i], args[i], bindings)
                 except TypeError as exc:
                     raise RuntimeError('cannot unpack parameters') from exc
             else:
@@ -75,6 +83,7 @@ class Function:
 
     def __repr__(self):
         return 'Function(%s, %s)' % (self.name, ', '.join(self.parameters))
+
 
 class AnonymousFunction:
     def __init__(self, ctx, children):
@@ -277,6 +286,13 @@ class IterativeInterpreter:
         else:
             return token.value
 
+    def ensure_list_of_identifiers(self, lst):
+        return [
+            self.ensure_list_of_identifiers(x) if isinstance(x, (tuple, list))
+            else self.ensure_identifier(x)
+            for x in lst
+        ]
+
     def evaluate_function_call(self, expr, ctx):
         fun = yield CodeResult(expr[0], ctx)
         args = []
@@ -317,19 +333,17 @@ class IterativeInterpreter:
     def handle_let(self, ctx, expr, bindings, body):
         new_ctx = ExecutionContext(ctx)
         for i in range(0, len(bindings), 2):
-            name = self.ensure_identifier(bindings[i])
             value = yield CodeResult(bindings[i + 1], new_ctx)
-            new_ctx[name] = value
+            if isinstance(bindings[i], (list, tuple)):
+                names = self.ensure_list_of_identifiers(bindings[i])
+                unpack_bind(names, value, new_ctx)
+            else:
+                name = self.ensure_identifier(bindings[i])
+                new_ctx[name] = value
 
         yield CodeResult(body, new_ctx)
 
     def build_callable(self, callable_cls, ctx, expr, name, parameters, body):
-        def recursively_ensure_identifiers(lst):
-            return [
-                recursively_ensure_identifiers(x) if isinstance(x, (tuple, list))
-                else self.ensure_identifier(x)
-                for x in lst
-            ]
 
         formal = []
         has_varargs = False
@@ -343,7 +357,7 @@ class IterativeInterpreter:
             elif isinstance(p, list):
                 if has_varargs:
                     raise SyntaxError('cannot use packed arguments after vararg')
-                formal.append(recursively_ensure_identifiers(p))
+                formal.append(self.ensure_list_of_identifiers(p))
             else:
                 raise SyntaxError('cannot use as a parameter: %s' % p)
 
