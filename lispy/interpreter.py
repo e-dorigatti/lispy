@@ -14,6 +14,11 @@ def unpack_bind(variable, value, bindings=None):
         (a, b) = (0, 2) results in a = 1 and b = 2
     """
     binds = bindings or {}
+    if len(variable) != len(value):
+        raise RuntimeError('cannot unpack "%s" to "%s": they have different length' % (
+            value, variable
+        ))
+
     for f, a in zip(variable, value):
         expand_f = isinstance(f, (list, tuple))
         expand_a = isinstance(a, (list, tuple))
@@ -21,7 +26,7 @@ def unpack_bind(variable, value, bindings=None):
         if expand_f and expand_a:
             unpack_bind(f, a, binds)
         elif expand_a or (not expand_a and not expand_f):
-            bindings[f] = a
+            binds[f] = a
         else:
             raise RuntimeError('cannot unpack "%s" to "%s"' % (
                 a, ExpressionTree.to_string(f)
@@ -344,7 +349,6 @@ class IterativeInterpreter:
         yield CodeResult(body, new_ctx)
 
     def build_callable(self, callable_cls, ctx, expr, name, parameters, body):
-
         formal = []
         has_varargs = False
         for i, p in enumerate(parameters):
@@ -498,3 +502,25 @@ class IterativeInterpreter:
     def handle_dollar(self, ctx, expr, val):
         name = val.value if isinstance(val, Token) else val
         yield ValueResult(ctx[name], ctx)
+
+    def handle_match(self, ctx, expr, var, *cases):
+        value = yield CodeResult(var, ctx)
+        for pattern, result in cases:
+            pattern_is_list = isinstance(pattern, (list, tuple))
+            var_is_list = isinstance(value, (list, tuple))
+
+            if pattern_is_list and var_is_list:
+                names = self.ensure_list_of_identifiers(pattern)
+                try:
+                    binds = unpack_bind(names, value)
+                except RuntimeError:
+                    continue
+                else:
+                    yield CodeResult(result, ExecutionContext(ctx, **binds))
+                    break
+            elif not pattern_is_list:
+                name = self.ensure_identifier(pattern)
+                yield CodeResult(result, ExecutionContext(ctx, name=value))
+                break
+        else:
+            raise RuntimeError('pattern matching failed')

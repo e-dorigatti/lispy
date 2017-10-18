@@ -306,3 +306,19 @@ producing `6` as result; the macro is expanded as
 the interpreter that `%0`, `%1` and `%2` should be interpreted as tokens, and hence take
 the value of `1`, `2` and `3` respectively; without it, they would be interpreted as strings,
 and the result of the expression would be `%0%1%2`.
+
+
+#### Pattern Matching
+`(match <expr> (<pattern-1> <result-1>) ... (<pattern-n> <result-n>))`
+
+Executes the result corresponding to the first pattern that "matches"
+`<expr>`, similarly to the unpacking of variables done in `let` expressions.
+Raises an error if the variable does not match any pattern.
+For example:
+
+```
+(match var 
+    ((a) "list with one elemet")
+    ((a b c) "list with three elements")
+    (x "list with a different number of elements or not a list")))
+```

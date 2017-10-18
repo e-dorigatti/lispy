@@ -188,3 +188,23 @@ def test_function_arg_unpack():
 def test_let_unpack():
     inpr = IterativeInterpreter()
     assert eval_expr('(let ((a b c) (list 1 2 3)) (+ a b c))', inpr) == 6
+
+    with pytest.raises(RuntimeError):
+        eval_expr('(let ((a b c) (list 1)) 3)', inpr)
+
+    with pytest.raises(RuntimeError):
+        eval_expr('(let ((a) (list 1 2 3)) 3)', inpr)
+
+
+def test_match():
+    inpr = IterativeInterpreter()
+
+    match = '(match %s ((a) 1) ((a b) 2) ((a b c) 3) (a -1))'
+    
+    assert eval_expr(match % '(list 1)', inpr) == 1
+    assert eval_expr(match % '(list 1 2)', inpr) == 2
+    assert eval_expr(match % '(list 1 2 3)', inpr) == 3
+    assert eval_expr(match % '4', inpr) == -1
+
+    with pytest.raises(RuntimeError):
+        eval_expr('(match (list 1 2) ((a) 1))', inpr)
