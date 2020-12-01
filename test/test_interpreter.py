@@ -202,6 +202,18 @@ def test_in():
     assert eval_expr('(in 2 (set (list 1 2 3)))', inpr) == True
 
 
+def test_filter():
+    inpr = IterativeInterpreter()
+    assert eval_expr('(filter (defn even (x) (= 0 (% x 2))) (range 10))', inpr) == [0, 2, 4, 6, 8]
+    assert eval_expr('(filter (defn even (x) (= 0 (% x 2))) (list))', inpr) == []
+
+
+def test_map():
+    inpr = IterativeInterpreter()
+    res = eval_expr('(map (defn double (x) (* 2 x)) (range 5))', inpr)
+    assert res == [0, 2, 4, 6, 8]
+
+
 def test_match():
     inpr = IterativeInterpreter()
 

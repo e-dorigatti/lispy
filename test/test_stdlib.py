@@ -50,19 +50,6 @@ def test_skip():
     assert eval_expr('(skip 2 (list 0 1 2 3))', inpr) == [2, 3]
 
 
-def test_filter():
-    inpr = load_stdlib(IterativeInterpreter())
-
-    assert eval_expr('(filter (defn even (x) (= 0 (% x 2))) (range 10))', inpr) == [0, 2, 4, 6, 8]
-    assert eval_expr('(filter (defn even (x) (= 0 (% x 2))) (list))', inpr) == []
-
-
-def test_map():
-    inpr = load_stdlib(IterativeInterpreter())
-
-    res = eval_expr('(map (defn double (x) (* 2 x)) (range 5))', inpr)
-    assert res == [0, 2, 4, 6, 8]
-
 def test_curry():
     inpr = load_stdlib(IterativeInterpreter())
     assert eval_expr('((curry * 2) 2)', inpr) == 4

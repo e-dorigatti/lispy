@@ -315,6 +315,9 @@ class IterativeInterpreter:
             else:
                 raise SyntaxError('cannot have parameters after varargs')
 
+        yield from self.call_function(fun, ctx, args)
+
+    def call_function(self, fun, ctx, args):
         if isinstance(fun, (Function, AnonymousFunction, Macro)):
             yield CodeResult(fun(ctx, *args), ctx)
         elif hasattr(fun, '__call__'):
@@ -530,3 +533,21 @@ class IterativeInterpreter:
         else:
             raise RuntimeError('pattern matching failed')
 
+    def handle_filter(self, ctx, expr, fn, coll):
+        f = yield CodeResult(fn, ctx)
+        c = yield CodeResult(coll, ctx)
+        res = []
+        for x in c:
+            keep = yield self.call_function(f, ctx, [x])
+            if keep:
+                res.append(x)
+        yield ValueResult(res, ctx)
+
+    def handle_map(self, ctx, expr, fn, coll):
+        f = yield CodeResult(fn, ctx)
+        c = yield CodeResult(coll, ctx)
+        res = []
+        for x in c:
+            fx = yield self.call_function(f, ctx, [x])
+            res.append(fx)
+        yield ValueResult(res, ctx)
