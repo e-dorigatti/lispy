@@ -3,7 +3,6 @@ import traceback
 import click
 from prompt_toolkit import prompt
 from prompt_toolkit.history import InMemoryHistory
-from prompt_toolkit.token import Token
 from prompt_toolkit.validation import ValidationError, Validator
 
 from lispy.context import ExecutionContext
@@ -23,19 +22,20 @@ class ExpressionValidator(Validator):
             raise ValidationError(message=str(exc))
 
 
-def get_continuation_tokens(cli, width):
-    return [(Token, '.' * (width - 1) + ' ')]
+def get_continuation_tokens(width, line_number, is_soft_wrap):
+    return [('', '.' * (width - 1) + ' ')]
 
 
 def repl(inpr, **kwargs):
     print('LISPY ver. 0.1')
+    print('Alt+Enter to evaluate an expression')
     hist = InMemoryHistory()
 
     while True:
         try:
             text = prompt(u'>>> ', multiline=True, history=hist,
                           validator=ExpressionValidator(),
-                          get_continuation_tokens=get_continuation_tokens)
+                          prompt_continuation=get_continuation_tokens)
         except EOFError:
             print('Quit')
             break
