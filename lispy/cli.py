@@ -69,26 +69,30 @@ def repl(inpr, **kwargs):
 @click.argument('input-file', type=click.File('r'), nargs=-1)
 @click.option('-e', '--expression', help='Evaluate this expression and print the result')
 @click.option('--without-stdlib', '-S', is_flag=True, help='Do not load standard library at startup.')
-def main(input_file, expression, without_stdlib, **kwargs):
+@click.option('--do-repl', '-r', is_flag=True, help='Start the REPL after evaluating the file and/or the expression')
+def main(input_file, expression, without_stdlib, do_repl, **kwargs):
     '''
     Python-based LISP interpreter.
 
-    Starts a REPL if launched without arguments, executes the
-    code in the given file, or evaluates the given expression.
+    Starts the REPL when invoked without arguments. Otherwise, executes the code in
+    the file (if given), then executes the provided expression (if given), then
+    enters the REPL (if the flag is specified).
     '''
     inpr = IterativeInterpreter(with_stdlib=not without_stdlib)
 
     if input_file:
         for f in input_file:
             eval_expr(f.read(), inpr)
-    elif expression:
+
+    if expression:
         result = eval_expr(expression, inpr)
 
         if isinstance(result, list):
             print(ExpressionTree.to_string(result))
         else:
             print(result)
-    else:
+
+    if do_repl or (not expression and not input_file):
         repl(inpr, **kwargs)
 
 

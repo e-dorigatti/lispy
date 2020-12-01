@@ -131,8 +131,9 @@ Usage: cli.py [OPTIONS] [INPUT_FILE]...
 
   Python-based LISP interpreter.
 
-  Starts a REPL if launched without arguments, executes the code in the
-  given file, or evaluates the given expression.
+  Starts the REPL when invoked without arguments. Otherwise, executes the code in
+  the file (if given), then executes the provided expression (if given), then
+  enters the REPL (if the flag is specified).
 
 Options:
   -e, --expression TEXT  Evaluate this expression and print the result
