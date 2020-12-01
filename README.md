@@ -106,15 +106,39 @@ Exception happened here: (/ 100 x)
 
 ### REPL
 Based on [python-prompt-toolkit](https://github.com/jonathanslenders/python-prompt-toolkit);
-it still needs some love, but has the basics. Use `ctrl+enter` to evaluate an
+it still needs some love, but has the basics. Use `alt+enter` to evaluate an
 input, as `enter` inserts a new line:
 
 ```
-$ python repl.py
+$ python lispy/cli.py
 >>> (+ 1 1)
 2
 ```
 
+### Installation and usage
+
+Installable via pip:
+
+```
+pip install git+https://github.com/e-dorigatti/lispy
+```
+
+Then can be invoked via the CLI:
+
+```
+$ lispy --help
+Usage: cli.py [OPTIONS] [INPUT_FILE]...
+
+  Python-based LISP interpreter.
+
+  Starts a REPL if launched without arguments, executes the code in the
+  given file, or evaluates the given expression.
+
+Options:
+  -e, --expression TEXT  Evaluate this expression and print the result
+  -S, --without-stdlib   Do not load standard library at startup.
+  --help                 Show this message and exit.
+```
 
 ### Standard library
 It's still tiny, but it's there (`lispy/stdlib.lispy`)! I tried to implement as few

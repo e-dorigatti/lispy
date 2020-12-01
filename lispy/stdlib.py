@@ -1,3 +1,4 @@
+STDLIB = '''
 (defn inc (x) (+ x 1))
 (defn dec (x) (- x 1))
 (defn first (lst) (nth lst 0))
@@ -91,3 +92,4 @@
 
         (list 'let (list fname (list '# 'let (concat & (zip fparams anon)) fbody))
             expression)))
+'''

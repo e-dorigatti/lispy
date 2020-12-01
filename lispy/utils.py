@@ -1,6 +1,7 @@
 from lispy.context import ExecutionContext
 from lispy.expression import ExpressionTree
 from lispy.tokenizer import Tokenizer
+from lispy.stdlib import STDLIB
 
 
 def parse_expr(program):
@@ -22,6 +23,5 @@ def eval_expr(program, inpr=None):
 
 
 def load_stdlib(inpr):
-    with open('lispy/stdlib.lispy') as f:
-        eval_expr(f.read(), inpr)
+    eval_expr(STDLIB, inpr)
     return inpr
