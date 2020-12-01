@@ -75,7 +75,8 @@ None
 
 
 ### Stack Traces
-When exceptions happen, the stacktrace of the interpreted code is printed, together with a python stacktrace of the interpreter (not shown here)
+When exceptions happen, the stacktrace of the interpreted code is printed,
+together with a python stacktrace of the interpreter (not shown here):
 
 ```
 >>> (defn stupid_divide (x)
@@ -191,7 +192,7 @@ iffalse is evaluated and returned.
 
 Introduces a new function. The last argument can be a vararg.
 
-#### Anonymous Function Definityion
+#### Anonymous Function Definition
 `(# <expr-1> ... <expr-n>)`
 
 Introduces a new function with no name (unless you give it one!), which thus can
@@ -285,7 +286,9 @@ TypeError: unsupported operand type(s) for +=: 'Token' and 'int'
 #### Consider as a Variable Name
 `($ x)`
 
-Considers `x` as a variable name, and evaluate it, e.g. `(let (x 3) ($ "x"))` evaluates to `3`.
+Considers `x` as a variable name, and evaluate it, e.g. `(let (x 3) ($ "x"))` evaluates to `3`. A
+slightly more complicated example is the pair `(list '+ ($ "x") 4))` and `(list '+ ($ "x") 1))`,
+which get evaluated to the same result: `(+ 1 4)` (supposing `x` has value 1).
 Useful when writing macros, because it causes `x` to be interpreted as a variable after the macro is
 expanded, instead of a string. Consider the `letfn` macro in the standard library:
 
