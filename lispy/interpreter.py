@@ -232,7 +232,7 @@ class IterativeInterpreter:
 
                 if isinstance(val, types.GeneratorType):
                     self.operation_stack.append(val)
-                    self.result_stack.append(None)
+                    self.result_stack.append(None)  # to initialize the generator
                 else:
                     self.result_stack.append(val)
 
@@ -420,6 +420,11 @@ class IterativeInterpreter:
     def handle_comment(self, ctx, expr, *children):
         pass
 
+    def handle_in(self, ctx, expr, item, collection):
+        it = yield CodeResult(item, ctx)
+        coll = yield CodeResult(collection, ctx)
+        yield ValueResult(it in coll, ctx)
+
     @staticmethod
     def vararg_iterator(vargs):
         iterating_on_vargs = False
@@ -524,3 +529,4 @@ class IterativeInterpreter:
                 break
         else:
             raise RuntimeError('pattern matching failed')
+

@@ -196,6 +196,12 @@ def test_let_unpack():
         eval_expr('(let ((a) (list 1 2 3)) 3)', inpr)
 
 
+def test_in():
+    inpr = IterativeInterpreter()
+    assert eval_expr('(in 4 (list 1 2 3))', inpr) == False
+    assert eval_expr('(in 2 (set (list 1 2 3)))', inpr) == True
+
+
 def test_match():
     inpr = IterativeInterpreter()
 

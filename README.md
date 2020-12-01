@@ -178,7 +178,8 @@ dicts myself (which would entail nuking the tokenization/parsing modules), as we
 as anything else that is found in the python ecosystem!
 
 ## Syntax
-This is what is currently supported, and how to do it.
+This is a preview of what is currently supported, and how to do it. Check the
+global builtins and the standard library to see the full capabilities.
 
 #### Conditionals
 `(if <condition> <iftrue> <iffalse>)`
@@ -232,6 +233,11 @@ value of `expr-n`.
 Evaluates all expressions in order, and returns the value of the last one. If an
 expression has side effects, they will be visible afterwards (e.g. functions
 defined in a do will be visible outside it).
+
+#### In collection
+`(in item collection)`
+
+Returns true if the collection contains the given item.
 
 #### Python Imports
  - `(pyimport mod-1 ... mod-n)`
