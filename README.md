@@ -115,6 +115,22 @@ $ python lispy/cli.py
 2
 ```
 
+### Data types
+
+The types `list`, `set` and `dict` from Python can be used out of the box:
+
+```
+>>> (dict "a" 1 "b" 2)
+{'a': 1, 'b': 2}
+>>> (list 1 2 3)
+(1 2 3)
+>>> (set (list 1 2 3))
+{1, 2, 3}
+```
+
+Custom classes cannot be defined, but classes defined in Python files can be imported
+and used.
+
 ### Installation and usage
 
 Installable via pip:
