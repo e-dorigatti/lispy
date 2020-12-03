@@ -57,6 +57,7 @@ def not_equality(*args):
 
 
 @glob('%')
+@glob('mod')
 def mod(a, b):
     return a % b
 
@@ -117,6 +118,7 @@ def to_string(obj):
 
 
 @glob('nth')
+@glob('index')
 def nth(lst, i):
     return lst[i]
 
