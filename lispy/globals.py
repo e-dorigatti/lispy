@@ -99,7 +99,11 @@ def readline(*args):
 
 @glob('int')
 def to_int(x, base=10):
-    return int(x, base)
+    if isinstance(x, str):
+        return int(x, base)
+    else:
+        # int() can't convert non-string with explicit base
+        return int(x)
 
 
 @glob('float')
