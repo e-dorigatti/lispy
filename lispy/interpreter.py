@@ -184,7 +184,7 @@ class IterativeInterpreter:
                     ) for formal, actual in op.gi_frame.f_locals['bindings'].items()
                 ])))
             elif op.gi_frame:
-                print(' ', ExpressionTree.print_short_format(op.gi_frame.f_locals['expr']))
+                print(' ', ExpressionTree.print_short_format(op.gi_frame.f_locals.get('expr', '<unknown>')))
             else:
                 print('  <unavailable>')
 
@@ -194,6 +194,9 @@ class IterativeInterpreter:
             ))
 
     def evaluate(self, expr, ctx=None):
+        """
+        Entry point for the evaluation of an expression.
+        """
         ctx = ctx or self.ctx
 
         val = self.eval(expr.as_list(), ctx)
@@ -551,3 +554,4 @@ class IterativeInterpreter:
             fx = yield self.call_function(f, ctx, [x])
             res.append(fx)
         yield ValueResult(res, ctx)
+
