@@ -156,3 +156,9 @@ def range_list(*args):
 @glob('is_list')
 def is_list(*args):
     return all(isinstance(x, list) for x in args)
+
+
+@glob('dict_set')
+def dict_set(d, k, v):
+    d[k] = v
+    return d
